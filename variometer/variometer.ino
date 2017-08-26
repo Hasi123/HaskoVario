@@ -2,7 +2,7 @@
 #include <SPI.h>
 #include <VarioSettings.h>
 #include <I2Cdev.h>
-#include <ms5611.h>
+//#include <ms5611.h>
 #include <vertaccel.h>
 #include <EEPROM.h>
 #include <inv_mpu.h>
@@ -20,6 +20,10 @@
 #include <LK8Sentence.h>
 #include <IGCSentence.h>
 #include <FirmwareUpdater.h>
+
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BMP280.h>
+Adafruit_BMP280 bmp; 
 
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
@@ -206,7 +210,7 @@ void setup() {
   /* init altimeter and accelerometer */
   /************************************/
   Fastwire::setup(FASTWIRE_SPEED, 0);
-  ms5611_init();
+  bmp.begin();
 #ifdef HAVE_ACCELEROMETER
   vertaccel_init();
   if( firmwareUpdateCond() ) {
@@ -230,7 +234,7 @@ void setup() {
   /******************/
   
   /* wait for first alti and acceleration */
-  while( ! (ms5611_dataReady()
+  while( ! (1  //no dataready needed
 #ifdef HAVE_ACCELEROMETER
             && vertaccel_dataReady()
 #endif //HAVE_ACCELEROMETER
@@ -238,13 +242,13 @@ void setup() {
   }
   
   /* get first data */
-  ms5611_updateData();
+  bmp.readAltitude(1013.25);
 #ifdef HAVE_ACCELEROMETER
   vertaccel_updateData();
 #endif //HAVE_ACCELEROMETER
 
   /* init kalman filter */
-  kalmanvert.init(ms5611_getAltitude(),
+  kalmanvert.init(bmp.readAltitude(1013.25),
 #ifdef HAVE_ACCELEROMETER
                   vertaccel_getValue(),
 #else
@@ -270,18 +274,18 @@ void loop() {
   /* compute vertical velocity */
   /*****************************/
 #ifdef HAVE_ACCELEROMETER
-  if( ms5611_dataReady() && vertaccel_dataReady() ) {
-    ms5611_updateData();
+  if( 1 && vertaccel_dataReady() ) {
+
     vertaccel_updateData();
 
-    kalmanvert.update( ms5611_getAltitude(),
+    kalmanvert.update( bmp.readAltitude(1013.25),
                        vertaccel_getValue(),
                        millis() );
 #else
-  if( ms5611_dataReady() ) {
-    ms5611_updateData();
+  if( 1 ) {
 
-    kalmanvert.update( ms5611_getAltitude(),
+
+    kalmanvert.update( bmp.readAltitude(1013.25),
                        0.0,
                        millis() );
 #endif //HAVE_ACCELEROMETER
