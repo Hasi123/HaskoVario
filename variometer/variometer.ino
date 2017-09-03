@@ -21,9 +21,8 @@
 #include <IGCSentence.h>
 #include <FirmwareUpdater.h>
 
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP280.h>
-Adafruit_BMP280 bmp; 
+#include <BMP280.h>
+BMP280 bmp;
 
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
