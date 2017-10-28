@@ -13,7 +13,7 @@
   Written by Kevin Townsend for Adafruit Industries.
   BSD license, all text above must be included in any redistribution
   
-  Modified for fastwire
+  Modified for fastwire and accurate measurements for a variometer
  ***************************************************************************/
 #include "Arduino.h"
 #include <I2Cdev.h>
@@ -33,7 +33,19 @@ bool BMP280::begin(uint8_t a, uint8_t chipid) {
     return false;
 
   readCoefficients();
-  write8(BMP280_REGISTER_CONTROL, 0x3F);
+  
+  //configure config
+  //t_sb[2:0]=000 no standby
+  //filter[2:0]=010 IRR filter coeff of 4 might need experimentation
+  //spi3w_en[0]=0
+  //sensor will measure at 26.32 Hz
+  write8(BMP280_REGISTER_CONFIG, 0x08);
+  
+  //configure ctrl_meas
+  //mode[1:0]=11 normal mode
+  //osrs_p[2:0]=101 16x pressure oversampling
+  //osrs_t[2:0]=010 2x temp oversampling
+  write8(BMP280_REGISTER_CONTROL, 0x57);
   return true;
 }
 
@@ -209,7 +221,7 @@ double BMP280::readAltitude(double seaLevelhPa) {
   double pressure = readPressure(); // in Si units for Pascal
   pressure /= 100;
 
-  altitude = 44330 * (1.0 - pow(pressure / seaLevelhPa, 0.1903));
+  altitude = 44330 * (1.0 - pow(pressure / seaLevelhPa, 0.1902949572));
 
   return altitude;
 }

@@ -13,7 +13,7 @@
   Written by Kevin Townsend for Adafruit Industries.
   BSD license, all text above must be included in any redistribution
   
-  Modified for fastwire
+  Modified for fastwire and accurate measurements for a variometer
  ***************************************************************************/
 #ifndef __BMP280_H__
 #define __BMP280_H__
@@ -95,27 +95,6 @@
     } bmp280_calib_data;
 /*=========================================================================*/
 
-/*
-class Adafruit_BMP280_Unified : public Adafruit_Sensor
-{
-  public:
-    Adafruit_BMP280_Unified(int32_t sensorID = -1);
-
-    bool  begin(uint8_t addr = BMP280_ADDRESS, uint8_t chipid = BMP280_CHIPID);
-    void  getTemperature(double *temp);
-    void  getPressure(double *pressure);
-    double pressureToAltitude(double seaLevel, double atmospheric, double temp);
-    double seaLevelForAltitude(double altitude, double atmospheric, double temp);
-    void  getEvent(sensors_event_t*);
-    void  getSensor(sensor_t*);
-
-  private:
-    uint8_t   _i2c_addr;
-    int32_t   _sensorID;
-};
-
-*/
-
 class BMP280
 {
   public:
@@ -138,9 +117,7 @@ class BMP280
 
     uint8_t   _i2caddr;
     int32_t   _sensorID;
-    int32_t t_fine;
-
-    int8_t _cs, _mosi, _miso, _sck;
+    int32_t   t_fine;
 
     bmp280_calib_data _bmp280_calib;
 
