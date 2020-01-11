@@ -34,9 +34,9 @@
 /* ------ !!! Run SetVarioParameters.ino !!! ---------*/
 /*        !!! Only when you change one   !!!          */
 /*        !!! of these 3 settings.       !!!          */
-#define VARIOMETER_MODEL "GNUVario"
-#define VARIOMETER_PILOT_NAME "Prunk Dump"
-#define VARIOMETER_GLIDER_NAME "ITV Dolpo 2"
+#define VARIOMETER_MODEL "HaskoVarioGPS"
+#define VARIOMETER_PILOT_NAME "David Hasko"
+#define VARIOMETER_GLIDER_NAME "SUPAIR Wild"
 /*        !!! For the others compilation !!!          */
 /*------- !!! is sufficient.             !!! ---------*/
 
@@ -143,11 +143,11 @@
 /* what you embed in the variometer   */ 
 #define HAVE_SPEAKER
 #define HAVE_ACCELEROMETER
-#define HAVE_SCREEN
+//#define HAVE_SCREEN
 #define HAVE_GPS
 #define HAVE_SDCARD
-#define HAVE_BLUETOOTH
-#define HAVE_VOLTAGE_DIVISOR
+//#define HAVE_BLUETOOTH
+//#define HAVE_VOLTAGE_DIVISOR
 
 /* ms5611 parameters */
 /* You can set the calibration coefficients if known */
@@ -163,8 +163,8 @@
 /* If you embed an accelerometer set the model here. */
 /* Possible values are :                             */
 /*   MPU6050, MPU6500, MPU9150, MPU9250              */
-#define MPU9250
-#define MPU_STATIC_ADDRESS 0x68
+#define MPU6050
+#define MPU_STATIC_ADDRESS 0x69
 
 /* calibration method */
 // comment this following line to use EEPROM instead of static values
@@ -176,15 +176,15 @@
 #define VERTACCEL_MAG_CAL_PROJ_SCALE -16689
 
 /* enable if you want to use the MPU INT pin */
-//#define MPU_ENABLE_INT_PIN
+#define MPU_ENABLE_INT_PIN
 #define MPU_INT_PIN 2
 
 /* Set the pins used for Screen and SD card modules */
 #define VARIOSCREEN_DC_PIN 6
 #define VARIOSCREEN_CS_PIN 7
-#define VARIOSCREEN_RST_PIN 8
-#define SDCARD_CS_PIN 14
-#define VOLTAGE_DIVISOR_PIN 16
+#define VARIOSCREEN_RST_PIN 14
+#define SDCARD_CS_PIN 8
+#define VOLTAGE_DIVISOR_PIN 15
 
 /* time needed to power on all the devices */
 #define VARIOMETER_POWER_ON_DELAY 2000
