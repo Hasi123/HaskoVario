@@ -33,6 +33,7 @@ void WSerial::begin(unsigned long speed) {
 
   txDelay = (F_CPU/speed/4L); //avr delay function use 4 clock cycle
   txDelay -= SERIAL_COMPUTING_COMPENSATION; //the time to compute the bit to send
+  this->write('\n');
 }
 
 void WSerial::write(uint8_t c) {
@@ -65,6 +66,14 @@ void WSerial::write(uint8_t c) {
   *reg |= mask;
   SREG = oldSREG; 
   this->delay();
+}
+
+void WSerial::println(uint8_t *array, uint8_t n) {
+  for (uint8_t i = 0; i < n; i++) {
+    this->write(array[i]);
+  }
+  this->write('\r');
+  this->write('\n');
 }
 
 void WSerial::delay(void) {

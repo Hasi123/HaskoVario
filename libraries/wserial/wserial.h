@@ -31,6 +31,9 @@ class WSerial {
   WSerial(uint8_t txPin);
   void begin(unsigned long speed);
   void write(uint8_t c);
+  void println(uint8_t *array, uint8_t n);
+  template <class T, size_t size>
+  void println(const T (&array)[size]);
 
  private:
   uint8_t txBitMask;
@@ -39,5 +42,14 @@ class WSerial {
   void delay(void);
 
 };
+
+//template functions cannot be defined in a separate CPP file, so we define it here
+template <class T, size_t size>
+void WSerial::println(const T (&array)[size]){
+  for(auto &value : array)
+    this->write(value);
+  this->write('\r');
+  this->write('\n');
+}
 
 #endif
