@@ -42,6 +42,7 @@
 #include <IGCSentence.h>
 #include <FirmwareUpdaterTWS.h>
 #include <FlightHistory.h>
+#include <marioSounds.h>
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 /*!!            !!! WARNING  !!!              !!*/
@@ -287,7 +288,8 @@ void setup() {
   /*****************************/
   /* wait for devices power on */
   /*****************************/
-  delay(VARIOMETER_POWER_ON_DELAY);
+  //delay(VARIOMETER_POWER_ON_DELAY);
+  marioSounds.bootUp();
 
   /**************************/
   /* init Two Wires devices */

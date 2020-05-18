@@ -84,7 +84,7 @@
   #endif
 
   #define TONEAC_VOLUME  //set to have volume control
-  //#define TONEAC_LENGTH  //set to have length control
+  #define TONEAC_LENGTH  //set to have length control
   
   #if defined (__AVR_ATmega32U4__) || defined(__AVR_ATmega640__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega2561__)
     #define PWMT1AMASK DDB5
