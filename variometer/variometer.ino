@@ -43,6 +43,7 @@
 #include <FirmwareUpdaterTWS.h>
 #include <FlightHistory.h>
 #include <marioSounds.h>
+#include <varioPower.h>
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 /*!!            !!! WARNING  !!!              !!*/
@@ -284,6 +285,8 @@ void beeperTapCallback(unsigned char direction, unsigned char count) {
 /*      SETUP      */
 /*-----------------*/
 void setup() {
+  //init varoPower
+  varioPower.init();
 
   /*****************************/
   /* wait for devices power on */
@@ -373,7 +376,8 @@ void enableflightStartComponents(void);
 /*      LOOP      */
 /*----------------*/
 void loop() {
- 
+  varioPower.update();
+
   /*****************************/
   /* compute vertical velocity */
   /*****************************/
