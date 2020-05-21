@@ -31,25 +31,30 @@ void wakeUp(){
 }
 
 void VarioPower::sleep(){
+  //disable interfaces to be able to reconfigure pins
+  //disable TWI
+  TWCR &= ~(1<<TWEN);
+  //disable USART
+  UCSR0B = 0;
+  //disable SPI
+  SPCR &= ~(1<<SPE);
+
   //turn off LDO
   PORTD &= ~(1<<PD5);
+  
+  //write all used pins to output low to completely eliminate any power drain
+  DDRB |= (1<<PB4) | (1<<PB5) | (1<<PB3) | (1<<PB0);
+  PORTB &= ~((1<<PB4) | (1<<PB5) | (1<<PB3) | (1<<PB0));
+  DDRC |= (1<<PC4) | (1<<PC5);
+  PORTC &= ~((1<<PC4) | (1<<PC5));
+  DDRD |= (1<<PD0) | (1<<PD1) | (1<<PD2);
+  PORTD &= ~((1<<PD0) | (1<<PD1) | (1<<PD2));
 
   //play shutdown sound also eliminates needing to debounce
   marioSounds.shutDown();
   
-  //TODO reconfigure pins to sleep for minimal power consumption
-/*  DDRB = 0;
-  DDRC = 0;
-  DDRD = 0;
-  PORTB = 0;
-  PORTC = 0;
-  PORTD = 0;*/
-  
   //disable ADC
   ADCSRA = 0;
-  
-  //inserted SD card prevents from sleep
-  //TEST: disable SD, SPI, clear registers
   
   noInterrupts();
   set_sleep_mode (SLEEP_MODE_PWR_DOWN);
