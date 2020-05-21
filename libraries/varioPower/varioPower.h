@@ -25,6 +25,14 @@
 
 #define INTPIN 3
 
+#if INTPIN == 2
+  #define INTPINREG PIND2
+#elif INTPIN == 3
+  #define INTPINREG PIND3
+#else
+  #error Either choose pin 2 or 3 for interrupt
+#endif
+
 class VarioPower
 {
   public:

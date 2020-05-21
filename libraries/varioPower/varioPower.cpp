@@ -26,10 +26,13 @@
 
 //can´t be part of the class
 void wakeUp(){
-  //do nothing just trigger a wakeup
+  //disable interrupts to avoid interrupt bootloop
+  noInterrupts();
 }
 
 void VarioPower::sleep(){
+  //turn off LDO
+  PORTD &= ~(1<<PD5);
 
   //play shutdown sound also eliminates needing to debounce
   marioSounds.shutDown();
@@ -42,18 +45,18 @@ void VarioPower::sleep(){
   PORTC = 0;
   PORTD = 0;*/
   
-  //turn off LDO
-  PORTD &= ~(1<<PD5);
-  
   //disable ADC
   ADCSRA = 0;
+  
+  //inserted SD card prevents from sleep
+  //TEST: disable SD, SPI, clear registers
   
   noInterrupts();
   set_sleep_mode (SLEEP_MODE_PWR_DOWN);
   sleep_enable();
   
   //enable external interrupt to wake CPU
-  //EIFR = (1 << INTF1);  // clear flag for interrupt 1 (shouldn't be needed)
+  EIFR = 3;  // clear flag for interrupts (shouldn't be needed)
   attachInterrupt (digitalPinToInterrupt(INTPIN), wakeUp, LOW);  //only LOW level interrupt is allowed to wake from sleep
  
   //turn off brown-out enable in software, will be automatically reenabled after wake
@@ -65,27 +68,27 @@ void VarioPower::sleep(){
   interrupts ();  // one cycle
   sleep_cpu ();  // one cycle
   
+  //////////////
   //sleep here//
+  //////////////
   
   //ISR routine runs
   sleep_disable();
-  
-  //to stop ISR routine from re-running (do we need this?)
-  noInterrupts();
-  detachInterrupt(digitalPinToInterrupt(INTPIN));
 
   //reset atmega
   //asm volatile (" jmp 0");  //restart code from beginning
-  //reset by watchdog is probably better
-  wdt_disable();
+  //reset by watchdog is recommended by the datasheet and is probably better
   wdt_enable(WDTO_15MS);
   while (1) {}
 }
 
 void VarioPower::init(){
-  //setup pins
-  DDRD |= (1<<PD5); //LDO output
-  PORTD |= (1<<PD5); //LDO on
+  //disable watchdog to avoid WDT bootloop
+  MCUSR = 0;
+  wdt_disable();
+  
+  //setup pins and analog reference
+  //LDO is enabled by bootloader
   analogReference(INTERNAL);
   pinMode(INTPIN, INPUT_PULLUP);
   
@@ -97,7 +100,7 @@ void VarioPower::init(){
 }
 
 void VarioPower::update(){
-  if (digitalRead(INTPIN) == LOW){
+  if (!(PIND & (1 << INTPINREG))){
 	  this->sleep();
   }
 /*  int volts = analogRead(A1);
