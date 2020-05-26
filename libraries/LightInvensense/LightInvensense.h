@@ -59,7 +59,11 @@
 /* See inv_mpu_dmp_motion_driver.h */
 #ifdef LIGHT_INVENSENSE_BUILD
 #include <inv_mpu_dmp_motion_driver.h>
-#define LIGHT_INVENSENSE_DMP_FEATURES (DMP_FEATURE_6X_LP_QUAT|DMP_FEATURE_SEND_RAW_ACCEL|DMP_FEATURE_GYRO_CAL|DMP_FEATURE_TAP)
+#ifdef MUTE_ON_TAP
+  #define LIGHT_INVENSENSE_DMP_FEATURES (DMP_FEATURE_6X_LP_QUAT|DMP_FEATURE_SEND_RAW_ACCEL|DMP_FEATURE_GYRO_CAL|DMP_FEATURE_TAP)
+#else
+  #define LIGHT_INVENSENSE_DMP_FEATURES (DMP_FEATURE_6X_LP_QUAT|DMP_FEATURE_SEND_RAW_ACCEL|DMP_FEATURE_GYRO_CAL)
+#endif
 #endif
 
 /* Tap settings if enabled */
@@ -68,7 +72,6 @@
 #define LIGHT_INVENSENSE_TAP_COUNT 1
 #define LIGHT_INVENSENSE_TAP_TIME 100
 #define LIGHT_INVENSENSE_TAP_TIME_MULTI 500
-
 
 /*********************/
 /* BUILDING FIRMWARE */
@@ -107,16 +110,21 @@ int fastMPUReadFIFO(int16_t *gyro, int16_t *accel, int32_t *quat);
 /* to compute with you own values */
 uint8_t fastMPUGetFIFOPaquetLength(void);
 int8_t fastMPUHaveFIFOPaquet(uint16_t fifoCount);
-void fastMPUParseFIFO(uint8_t* dmpPaquet, int16_t *gyro, int16_t *accel, int32_t *quat, uint8_t& tap);
+void fastMPUParseFIFO(uint8_t* dmpPaquet, int16_t *gyro, int16_t *accel, int32_t *quat
+#ifdef MUTE_ON_TAP
+, uint8_t& tap
+#endif //MUTE_ON_TAP
+);
 
 
+#ifdef MUTE_ON_TAP
 /* tap callback */
 void fastMPUSetTapCallback(void (*callback)(unsigned char, unsigned char));
 
 /* callback is called with fastMPUReadFIFO */
 /* if not used, call it manually */
 void fastMPUCheckTap(uint8_t tap);
-
+#endif //MUTE_ON_TAP
 
 #ifdef AK89xx_SECONDARY
 /* mag measures */

@@ -51,6 +51,9 @@
 /* The volume of the beeps, max = 10 */
 #define VARIOMETER_BEEP_VOLUME 10
 
+/* Enable mute on tap feature */
+//#define MUTE_ON_TAP
+
 /* The variometer react like this according to vertical speed in m/s :        */
 /* (near climbing beep is not enabled by default)                             */
 /*                                                                            */

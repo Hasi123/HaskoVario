@@ -335,6 +335,7 @@ int createCompressedFirmware(void) {
   if( dmp_enable_feature(LIGHT_INVENSENSE_DMP_FEATURES) < 0 )
     return -1;
 
+#ifdef MUTE_ON_TAP
   /* setting tap if enabled */
   if( LIGHT_INVENSENSE_DMP_FEATURES & DMP_FEATURE_TAP ) {
     if(dmp_set_tap_axes(LIGHT_INVENSENSE_TAP_AXES) < 0)
@@ -348,6 +349,7 @@ int createCompressedFirmware(void) {
     if( dmp_set_tap_time_multi(LIGHT_INVENSENSE_TAP_TIME_MULTI) < 0)
       return -1;
   }
+#endif
   
   /*********************/
   /* Compress firmware */
@@ -441,6 +443,7 @@ int createCompressedFirmware(void) {
     packet_length += 16;
   }
   
+#ifdef MUTE_ON_TAP
   if (LIGHT_INVENSENSE_DMP_FEATURES & (DMP_FEATURE_TAP | DMP_FEATURE_ANDROID_ORIENT)) {
     Serial.print("#define COMPRESSED_DMP_PAQUET_GESTURE\n");
     packet_length += 4;
@@ -451,6 +454,7 @@ int createCompressedFirmware(void) {
       Serial.print("#define COMPRESSED_DMP_PAQUET_ANDROID_ORIENT\n");
     }
   }
+#endif
 
   Serial.print("#define COMPRESSED_DMP_PAQUET_LENGTH ");
   Serial.print(packet_length, DEC);
@@ -971,7 +975,7 @@ void fastMPUStart(void) {
 #endif
 }
 
-
+#ifdef MUTE_ON_TAP
 /* tap call back */
 void (*tapCallBack)(uint8_t, uint8_t) = NULL;
 
@@ -992,6 +996,7 @@ void fastMPUCheckTap(uint8_t tap) {
 #endif //COMPRESSED_DMP_PAQUET_TAP
 #endif //COMPRESSED_DMP_PAQUET_GESTURE
 }
+#endif //MUTE_ON_TAP
 
 
 /* fifo */
@@ -1014,7 +1019,11 @@ int8_t fastMPUHaveFIFOPaquet(uint16_t fifoCount) {
 }
 
 
-void fastMPUParseFIFO(uint8_t* dmpPaquet, int16_t *gyro, int16_t *accel, int32_t *quat, uint8_t& tap) {
+void fastMPUParseFIFO(uint8_t* dmpPaquet, int16_t *gyro, int16_t *accel, int32_t *quat
+#ifdef MUTE_ON_TAP
+, uint8_t& tap
+#endif
+) {
   
   /********************/
   /* parse DMP paquet */
@@ -1065,7 +1074,7 @@ void fastMPUParseFIFO(uint8_t* dmpPaquet, int16_t *gyro, int16_t *accel, int32_t
   */
 #endif
 
-
+#ifdef MUTE_ON_TAP
 #ifdef COMPRESSED_DMP_PAQUET_GESTURE
 #ifdef COMPRESSED_DMP_PAQUET_TAP
   if( (dmpPaquetP[1] & INT_SRC_TAP) && tapCallBack ) {
@@ -1077,6 +1086,7 @@ void fastMPUParseFIFO(uint8_t* dmpPaquet, int16_t *gyro, int16_t *accel, int32_t
 #else
   tap = 0;
 #endif //COMPRESSED_DMP_PAQUET_GESTURE 
+#endif //MUTE_ON_TAP
 }
 
 
@@ -1113,15 +1123,23 @@ int fastMPUReadFIFO(int16_t *gyro, int16_t *accel, int32_t *quat) {
   intTW.readBytes(INV_HW_ADDR, INV_REG_FIFO_R_W, COMPRESSED_DMP_PAQUET_LENGTH, dmpPaquet);
 
   /* parse paquet */
+#ifdef MUTE_ON_TAP
   uint8_t tap;
-  fastMPUParseFIFO(dmpPaquet, gyro, accel, quat, tap);
+#endif
+  fastMPUParseFIFO(dmpPaquet, gyro, accel, quat
+#ifdef MUTE_ON_TAP
+, tap
+#endif
+);
 
   /* check tap */
+#ifdef MUTE_ON_TAP
 #ifdef COMPRESSED_DMP_PAQUET_GESTURE
 #ifdef COMPRESSED_DMP_PAQUET_TAP
   fastMPUCheckTap(tap); 
 #endif //COMPRESSED_DMP_PAQUET_TAP
 #endif //COMPRESSED_DMP_PAQUET_GESTURE
+#endif //MUTE_ON_TAP
 
   return 0;
 }

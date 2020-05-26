@@ -267,7 +267,7 @@ unsigned long lastVarioSentenceTimestamp = 0;
 #endif // !HAVE_GPS
 #endif //HAVE_BLUETOOTH
 
-#if defined(HAVE_ACCELEROMETER) && defined(HAVE_SPEAKER) 
+#if defined(HAVE_ACCELEROMETER) && defined(HAVE_SPEAKER) && defined(MUTE_ON_TAP)
 /* tap callback : mute/unmute beeper */
 void beeperTapCallback(unsigned char direction, unsigned char count) { 
 
@@ -303,7 +303,9 @@ void setup() {
   if( firmwareUpdateCondTWS() ) {
    firmwareUpdate();
   }
+#ifdef MUTE_ON_TAP
   fastMPUSetTapCallback(beeperTapCallback);
+#endif //MUTE_ON_TAP
 #endif //HAVE_ACCELEROMETER
 
   /************/

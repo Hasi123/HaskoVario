@@ -357,12 +357,16 @@ void TWScheduler::getRawAccel(int16_t* rawAccel, int32_t* quat) {
   bunset(HAVE_ACCEL);
   interrupts();
 
+#ifdef MUTE_ON_TAP
   /* parse FiFo packet to get raw measures */
   uint8_t tap;
   fastMPUParseFIFO(fifoPacket, NULL, rawAccel, quat, tap);
 
   /* check tap : use callback if needed */
   fastMPUCheckTap(tap);
+#else
+  fastMPUParseFIFO(fifoPacket, NULL, rawAccel, quat);
+#endif
 }
   
 
