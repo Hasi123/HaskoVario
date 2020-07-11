@@ -99,17 +99,19 @@ void VarioPower::init(){
   
   //check voltage and if ok continue
   //R1: 10M, R2: 3M
-/*  if (analogRead(A1) < 730) { //smaller 3.4V
+  if (analogRead(A1) < 730) { //smaller 3.4V
     this->sleep();
-  }*/
+  }
 }
 
 void VarioPower::update(){
   if (!(PIND & (1 << INTPINREG))){
 	  this->sleep();
   }
-/*  int volts = analogRead(A1);
-  if (volts < 740) { marioSounds.lowVoltage(); }  //3.45V needs revision to continue running loop and only beep every minute
-  else if (volts < 708) { this->sleep(); }  //3.3V
-  */
+  int volts = analogRead(A1);
+  if (volts < 740) {
+    if (volts < 708) { this->sleep(); }  //3.3V
+	else { /*marioSounds.lowVoltage();*/ }  //3.45V needs revision to continue running loop and only beep every minute
+  }
+  
 }
