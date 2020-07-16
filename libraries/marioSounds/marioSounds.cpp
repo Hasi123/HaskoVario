@@ -50,13 +50,7 @@ void MarioSounds::shutDown(){
 }
 
 void MarioSounds::lowVoltage(){
-  toneAC(400);
-  delay(500);
-  toneAC(400);
-  delay(500);
-  toneAC(400);
-  delay(500);
-  noToneAC();
+  toneAC(400, 10, 100, true);
 }
 
 void MarioSounds::debugBeep() {

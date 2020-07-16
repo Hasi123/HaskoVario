@@ -108,10 +108,28 @@ void VarioPower::update(){
   if (!(PIND & (1 << INTPINREG))){
 	  this->sleep();
   }
-  int volts = analogRead(A1);
-  if (volts < 740) {
+  
+  uint16_t volts = analogRead(A1);
+  if (volts < 740) { //3.45V
     if (volts < 708) { this->sleep(); }  //3.3V
-	else { /*marioSounds.lowVoltage();*/ }  //3.45V needs revision to continue running loop and only beep every minute
+	else {
+		if (nextEvent <= millis()){
+		uint16_t nextAdd;
+		beepStatus++;
+			
+		if (beepStatus < 4){
+			marioSounds.lowVoltage();
+			nextAdd = 200;
+		}
+		else{
+			nextAdd = 60000;
+			beepStatus = 0;
+		}
+		
+		nextEvent += nextAdd;
+		
+		}
+	}
   }
   
 }

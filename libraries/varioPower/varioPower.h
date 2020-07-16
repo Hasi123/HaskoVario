@@ -39,6 +39,9 @@ class VarioPower
     void sleep();
     void init();
     void update();
+  private:
+    uint8_t beepStatus = 0;
+	uint32_t nextEvent = 0;
 };
 
 extern VarioPower varioPower;
