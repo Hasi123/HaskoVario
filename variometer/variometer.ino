@@ -51,6 +51,10 @@
 /*!! libraries/VarioSettings/VarioSettings.h  !!*/
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 
+/*******************/
+/* Custom objects  */
+/*******************/
+VarioPower varioPower;
 
 /*******************/
 /* General objects */
@@ -378,8 +382,6 @@ void enableflightStartComponents(void);
 /*      LOOP      */
 /*----------------*/
 void loop() {
-  varioPower.update();
-
   /*****************************/
   /* compute vertical velocity */
   /*****************************/
@@ -427,10 +429,11 @@ void loop() {
   /*****************/
   /* update beeper */
   /*****************/
+  if(varioPower.update()) {
 #ifdef HAVE_SPEAKER
-  beeper.update();
+    beeper.update();
 #endif //HAVE_SPEAKER
-
+  }
 
   /********************/
   /* update bluetooth */
