@@ -100,7 +100,9 @@ void VarioPower::init() {
   beepStatus = 0;  //this needed?
   nextEvent = 0;
 
-  //check voltage and if ok continue
+  marioSounds.bootUp();
+
+  //if voltage too low goto sleep
   //R1: 10M, R2: 3M
   if (analogRead(A1) < 730) { //smaller 3.4V
     this->sleep();

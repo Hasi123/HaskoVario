@@ -289,14 +289,13 @@ void beeperTapCallback(unsigned char direction, unsigned char count) {
 /*      SETUP      */
 /*-----------------*/
 void setup() {
-  //init varoPower
+  //init varioPower
   varioPower.init();
 
   /*****************************/
   /* wait for devices power on */
   /*****************************/
-  //delay(VARIOMETER_POWER_ON_DELAY);
-  marioSounds.bootUp();
+  //delay(VARIOMETER_POWER_ON_DELAY);  //not needed anymore becuase of bootsound
 
   /**************************/
   /* init Two Wires devices */
