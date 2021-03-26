@@ -23,6 +23,9 @@
 
 #include <Arduino.h>
 
+#define POSITION_MEASURE_STANDARD_DEVIATION 0.1
+#define ACCELERATION_MEASURE_STANDARD_DEVIATION 0.3
+
 /*********************************************************/
 /* compute velocity from known position and acceleration */
 /* p = position, v = velocity, a = acceleration          */

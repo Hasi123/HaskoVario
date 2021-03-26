@@ -1,6 +1,6 @@
 // I2Cdev library collection - Main I2C device class
 // Abstracts bit and byte I2C R/W functions into a convenient class
-// 6/9/2012 by Jeff Rowberg <jeff@rowberg.net>
+// 2013-06-05 by Jeff Rowberg <jeff@rowberg.net>
 //
 // Changelog:
 //      2013-05-06 - add Francesco Ferrara's Fastwire v0.24 implementation with small modifications
@@ -44,28 +44,27 @@ THE SOFTWARE.
 */
 
 #include "I2Cdev.h"
-#include <ms5611.h>
 
-#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE || I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_SBWIRE
 
     #ifdef I2CDEV_IMPLEMENTATION_WARNINGS
         #if ARDUINO < 100
             #warning Using outdated Arduino IDE with Wire library is functionally limiting.
-            #warning Arduino IDE v1.0.1+ with I2Cdev Fastwire implementation is recommended.
+            #warning Arduino IDE v1.6.5+ with I2Cdev Fastwire implementation is recommended.
             #warning This I2Cdev implementation does not support:
             #warning - Repeated starts conditions
             #warning - Timeout detection (some Wire requests block forever)
         #elif ARDUINO == 100
             #warning Using outdated Arduino IDE with Wire library is functionally limiting.
-            #warning Arduino IDE v1.0.1+ with I2Cdev Fastwire implementation is recommended.
+            #warning Arduino IDE v1.6.5+ with I2Cdev Fastwire implementation is recommended.
             #warning This I2Cdev implementation does not support:
             #warning - Repeated starts conditions
             #warning - Timeout detection (some Wire requests block forever)
         #elif ARDUINO > 100
-            #warning Using current Arduino IDE with Wire library is functionally limiting.
-            #warning Arduino IDE v1.0.1+ with I2CDEV_BUILTIN_FASTWIRE implementation is recommended.
+            /*#warning Using current Arduino IDE with Wire library is functionally limiting.
+            #warning Arduino IDE v1.6.5+ with I2CDEV_BUILTIN_FASTWIRE implementation is recommended.
             #warning This I2Cdev implementation does not support:
-            #warning - Timeout detection (some Wire requests block forever)
+            #warning - Timeout detection (some Wire requests block forever)*/
         #endif
     #endif
 
@@ -86,6 +85,11 @@ THE SOFTWARE.
     // Originally offered to the i2cdevlib project at http://arduino.cc/forum/index.php/topic,68210.30.html
     TwoWire Wire;
 
+#endif
+
+#ifndef BUFFER_LENGTH
+// band-aid fix for platforms without Wire-defined BUFFER_LENGTH (removed from some official implementations)
+#define BUFFER_LENGTH 32
 #endif
 
 /** Default constructor.
@@ -204,12 +208,7 @@ int8_t I2Cdev::readWord(uint8_t devAddr, uint8_t regAddr, uint16_t *data, uint16
  * @param timeout Optional read timeout in milliseconds (0 to disable, leave off to use default class value in I2Cdev::readTimeout)
  * @return Number of bytes read (-1 indicates failure)
  */
-int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8_t *data, uint16_t timeout, boolean lockMS5611) {
-    /* lock the ms5611 */
-    if( lockMS5611 ) {
-        ms5611_lock();
-    }
-    
+int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8_t *data, uint16_t timeout) {
     #ifdef I2CDEV_SERIAL_DEBUG
         Serial.print("I2C (0x");
         Serial.print(devAddr, HEX);
@@ -223,7 +222,7 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
     int8_t count = 0;
     uint32_t t1 = millis();
 
-    #if (I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE)
+    #if (I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE || I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_SBWIRE || I2CDEV_IMPLEMENTATION == I2CDEV_TEENSY_3X_WIRE)
 
         #if (ARDUINO < 100)
             // Arduino v00xx (before v1.0), Wire library
@@ -231,7 +230,7 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
             // I2C/TWI subsystem uses internal buffer that breaks with large data requests
             // so if user requests more than BUFFER_LENGTH bytes, we have to do it in
             // smaller chunks instead of all at once
-            for (uint8_t k = 0; k < length; k += min(length, BUFFER_LENGTH)) {
+            for (uint8_t k = 0; k < length; k += min((int)length, BUFFER_LENGTH)) {
                 Wire.beginTransmission(devAddr);
                 Wire.send(regAddr);
                 Wire.endTransmission();
@@ -255,7 +254,7 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
             // I2C/TWI subsystem uses internal buffer that breaks with large data requests
             // so if user requests more than BUFFER_LENGTH bytes, we have to do it in
             // smaller chunks instead of all at once
-            for (uint8_t k = 0; k < length; k += min(length, BUFFER_LENGTH)) {
+            for (uint8_t k = 0; k < length; k += min((int)length, BUFFER_LENGTH)) {
                 Wire.beginTransmission(devAddr);
                 Wire.write(regAddr);
                 Wire.endTransmission();
@@ -279,7 +278,7 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
             // I2C/TWI subsystem uses internal buffer that breaks with large data requests
             // so if user requests more than BUFFER_LENGTH bytes, we have to do it in
             // smaller chunks instead of all at once
-            for (uint8_t k = 0; k < length; k += min(length, BUFFER_LENGTH)) {
+            for (uint8_t k = 0; k < length; k += min((int)length, BUFFER_LENGTH)) {
                 Wire.beginTransmission(devAddr);
                 Wire.write(regAddr);
                 Wire.endTransmission();
@@ -318,10 +317,6 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
         Serial.println(" read).");
     #endif
 
-    /* unlock the ms5611 */
-    if( lockMS5611 ) {
-        ms5611_release();
-    }
     return count;
 }
 
@@ -333,12 +328,7 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
  * @param timeout Optional read timeout in milliseconds (0 to disable, leave off to use default class value in I2Cdev::readTimeout)
  * @return Number of words read (-1 indicates failure)
  */
-int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint16_t *data, uint16_t timeout, boolean lockMS5611) {
-    /* lock the ms5611 */
-    if( lockMS5611 ) {
-        ms5611_lock();
-    }
-    
+int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint16_t *data, uint16_t timeout) {
     #ifdef I2CDEV_SERIAL_DEBUG
         Serial.print("I2C (0x");
         Serial.print(devAddr, HEX);
@@ -352,7 +342,7 @@ int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint1
     int8_t count = 0;
     uint32_t t1 = millis();
 
-    #if (I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE)
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE || I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_SBWIRE || I2CDEV_IMPLEMENTATION == I2CDEV_TEENSY_3X_WIRE
 
         #if (ARDUINO < 100)
             // Arduino v00xx (before v1.0), Wire library
@@ -458,8 +448,8 @@ int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint1
 
         // Fastwire library
         // no loop required for fastwire
-        uint16_t intermediate[(uint8_t)length];
-        uint8_t status = Fastwire::readBuf(devAddr << 1, regAddr, (uint8_t *)intermediate, (uint8_t)(length * 2));
+        uint8_t intermediate[(uint8_t)length*2];
+        uint8_t status = Fastwire::readBuf(devAddr << 1, regAddr, intermediate, (uint8_t)(length * 2));
         if (status == 0) {
             count = length; // success
             for (uint8_t i = 0; i < length; i++) {
@@ -478,11 +468,7 @@ int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint1
         Serial.print(count, DEC);
         Serial.println(" read).");
     #endif
-
-    /* unlock the ms5611 */
-    if( lockMS5611 ) {
-        ms5611_release();
-    }
+    
     return count;
 }
 
@@ -599,12 +585,7 @@ bool I2Cdev::writeWord(uint8_t devAddr, uint8_t regAddr, uint16_t data) {
  * @param data Buffer to copy new data from
  * @return Status of operation (true = success)
  */
-bool I2Cdev::writeBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, const uint8_t* data, boolean lockMS5611) {
-    /* lock the ms5611 */
-    if( lockMS5611 ) {
-        ms5611_lock();
-    }
-  
+bool I2Cdev::writeBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8_t* data) {
     #ifdef I2CDEV_SERIAL_DEBUG
         Serial.print("I2C (0x");
         Serial.print(devAddr, HEX);
@@ -618,7 +599,9 @@ bool I2Cdev::writeBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, const 
     #if ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO < 100) || I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_NBWIRE)
         Wire.beginTransmission(devAddr);
         Wire.send((uint8_t) regAddr); // send address
-    #elif (I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100)
+    #elif ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100) \
+            || (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_SBWIRE && ARDUINO >= 100) \
+            || I2CDEV_IMPLEMENTATION == I2CDEV_TEENSY_3X_WIRE)
         Wire.beginTransmission(devAddr);
         Wire.write((uint8_t) regAddr); // send address
     #elif (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE)
@@ -632,7 +615,9 @@ bool I2Cdev::writeBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, const 
         #endif
         #if ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO < 100) || I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_NBWIRE)
             Wire.send((uint8_t) data[i]);
-        #elif (I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100)
+        #elif ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100) \
+                || (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_SBWIRE && ARDUINO >= 100) \
+                || I2CDEV_IMPLEMENTATION == I2CDEV_TEENSY_3X_WIRE)
             Wire.write((uint8_t) data[i]);
         #elif (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE)
             Fastwire::write((uint8_t) data[i]);
@@ -640,7 +625,9 @@ bool I2Cdev::writeBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, const 
     }
     #if ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO < 100) || I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_NBWIRE)
         Wire.endTransmission();
-    #elif (I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100)
+    #elif ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100) \
+            || (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_SBWIRE && ARDUINO >= 100) \
+            || I2CDEV_IMPLEMENTATION == I2CDEV_TEENSY_3X_WIRE)
         status = Wire.endTransmission();
     #elif (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE)
         Fastwire::stop();
@@ -649,11 +636,6 @@ bool I2Cdev::writeBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, const 
     #ifdef I2CDEV_SERIAL_DEBUG
         Serial.println(". Done.");
     #endif
-
-    /* unlock the ms5611 */
-    if( lockMS5611 ) {
-         ms5611_release();
-    }
     return status == 0;
 }
 
@@ -664,12 +646,7 @@ bool I2Cdev::writeBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, const 
  * @param data Buffer to copy new data from
  * @return Status of operation (true = success)
  */
-bool I2Cdev::writeWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint16_t* data, boolean lockMS5611) {
-    /* lock the ms5611 */
-    if( lockMS5611 ) {
-        ms5611_lock();
-    }
-  
+bool I2Cdev::writeWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint16_t* data) {
     #ifdef I2CDEV_SERIAL_DEBUG
         Serial.print("I2C (0x");
         Serial.print(devAddr, HEX);
@@ -683,33 +660,39 @@ bool I2Cdev::writeWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint16
     #if ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO < 100) || I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_NBWIRE)
         Wire.beginTransmission(devAddr);
         Wire.send(regAddr); // send address
-    #elif (I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100)
+    #elif ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100) \
+            || (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_SBWIRE && ARDUINO >= 100) \
+            || I2CDEV_IMPLEMENTATION == I2CDEV_TEENSY_3X_WIRE)
         Wire.beginTransmission(devAddr);
         Wire.write(regAddr); // send address
     #elif (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE)
         Fastwire::beginTransmission(devAddr);
         Fastwire::write(regAddr);
     #endif
-    for (uint8_t i = 0; i < length * 2; i++) {
+    for (uint8_t i = 0; i < length; i++) { 
         #ifdef I2CDEV_SERIAL_DEBUG
             Serial.print(data[i], HEX);
             if (i + 1 < length) Serial.print(" ");
         #endif
         #if ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO < 100) || I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_NBWIRE)
             Wire.send((uint8_t)(data[i] >> 8));     // send MSB
-            Wire.send((uint8_t)data[i++]);          // send LSB
-        #elif (I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100)
+            Wire.send((uint8_t)data[i]);          // send LSB
+        #elif ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100) \
+                || (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_SBWIRE && ARDUINO >= 100) \
+                || I2CDEV_IMPLEMENTATION == I2CDEV_TEENSY_3X_WIRE)
             Wire.write((uint8_t)(data[i] >> 8));    // send MSB
-            Wire.write((uint8_t)data[i++]);         // send LSB
+            Wire.write((uint8_t)data[i]);         // send LSB
         #elif (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE)
             Fastwire::write((uint8_t)(data[i] >> 8));       // send MSB
-            status = Fastwire::write((uint8_t)data[i++]);   // send LSB
+            status = Fastwire::write((uint8_t)data[i]);   // send LSB
             if (status != 0) break;
         #endif
     }
     #if ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO < 100) || I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_NBWIRE)
         Wire.endTransmission();
-    #elif (I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100)
+    #elif ((I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE && ARDUINO >= 100) \
+            || (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_SBWIRE && ARDUINO >= 100) \
+            || I2CDEV_IMPLEMENTATION == I2CDEV_TEENSY_3X_WIRE)
         status = Wire.endTransmission();
     #elif (I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE)
         Fastwire::stop();
@@ -718,11 +701,6 @@ bool I2Cdev::writeWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint16
     #ifdef I2CDEV_SERIAL_DEBUG
         Serial.println(". Done.");
     #endif
-
-    /* unlock the ms5611 */
-    if( lockMS5611 ) {
-        ms5611_release();
-    }
     return status == 0;
 }
 

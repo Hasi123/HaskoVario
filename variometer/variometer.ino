@@ -1,6 +1,7 @@
 /* variometer -- The GNUVario embedded code
  *
  * Copyright 2016-2019 Baptiste PELLEGRIN
+ * Modified 2021 by David Hasko
  * 
  * This file is part of GNUVario.
  *
@@ -21,13 +22,10 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <VarioSettings.h>
-#include <IntTW.h>
-#include <ms5611.h>
-#include <vertaccel.h>
-#include <EEPROM.h>
-#include <LightInvensense.h>
-#include <TwoWireScheduler.h>
-#include <kalmanvert.h>
+#include "I2CHelper.h"
+#include "MPU6050Helper.h"
+#include "ms5611Helper.h"
+#include "kalmanvert.h"
 #include <beeper.h>
 #include <toneAC.h>
 #include <avr/pgmspace.h>
@@ -40,7 +38,6 @@
 #include <LxnavSentence.h>
 #include <LK8Sentence.h>
 #include <IGCSentence.h>
-#include <FirmwareUpdaterTWS.h>
 #include <FlightHistory.h>
 #include <marioSounds.h>
 #include <varioPower.h>
@@ -69,18 +66,6 @@ uint8_t variometerState = VARIOMETER_STATE_INITIAL;
 #else
 uint8_t variometerState = VARIOMETER_STATE_CALIBRATED;
 #endif //HAVE_GPS
-
-/***************/
-/* IMU objects */
-/***************/
-#ifdef HAVE_BMP280
-Bmp280 TWScheduler::bmp280;
-#else
-Ms5611 TWScheduler::ms5611;
-#endif
-#ifdef HAVE_ACCELEROMETER
-Vertaccel TWScheduler::vertaccel;
-#endif
 
 
 /*****************/
@@ -165,14 +150,9 @@ ScreenScheduler varioScreen(screen, displayList, sizeof(displayList)/sizeof(Scre
 /**********************/
 /* alti/vario objects */
 /**********************/
-#define POSITION_MEASURE_STANDARD_DEVIATION 0.1
-#ifdef HAVE_ACCELEROMETER 
-#define ACCELERATION_MEASURE_STANDARD_DEVIATION 0.3
-#else
-#define ACCELERATION_MEASURE_STANDARD_DEVIATION 0.6
-#endif //HAVE_ACCELEROMETER 
-
 kalmanvert kalmanvert;
+short gyro[3], accel[3];
+long quat[4];
 
 #ifdef HAVE_SPEAKER
 beeper beeper(VARIOMETER_SINKING_THRESHOLD, VARIOMETER_CLIMBING_THRESHOLD, VARIOMETER_NEAR_CLIMBING_SENSITIVITY, VARIOMETER_BEEP_VOLUME);
@@ -297,19 +277,6 @@ void setup() {
   /*****************************/
   //delay(VARIOMETER_POWER_ON_DELAY);  //not needed anymore becuase of bootsound
 
-  /**************************/
-  /* init Two Wires devices */
-  /**************************/
-  intTW.begin();
-  twScheduler.init();
-#ifdef HAVE_ACCELEROMETER
-  if( firmwareUpdateCondTWS() ) {
-   firmwareUpdate();
-  }
-#ifdef MUTE_ON_TAP
-  fastMPUSetTapCallback(beeperTapCallback);
-#endif //MUTE_ON_TAP
-#endif //HAVE_ACCELEROMETER
 
   /************/
   /* init SPI */
@@ -351,20 +318,37 @@ void setup() {
 #endif //HAVE_GPS
 #endif //defined(HAVE_BLUETOOTH) || defined(HAVE_GPS)
   
-  /******************/
-  /* get first data */
-  /******************/
-  
-  /* wait for first alti */
-  while( ! twScheduler.havePressure() ) { }
-  
-  /* init kalman filter with 0.0 accel */
-  double firstAlti = twScheduler.getAlti();
+  /**************************/
+  /* init Two Wires devices */
+  /**************************/
+  I2Cbegin();
+
+  //MPU6050 calibration
+  mpuCalibrate(); //run calibration if up side down
+
+  //ms5611
+  msInit();
+  for (uint8_t i = 0; i < (MS5611_TEMP_EVERY + 1); i++) { //half second
+    msGetMeasure();
+    msStartMeasure();
+    delay(MS5611_CONV_DELAY);
+  }
+
+  //init kalman filter
+  float firstAlti = msComputeAltitude();
+  msStartMeasure(); //get measurement for loop()
   kalmanvert.init(firstAlti,
                   0.0,
                   POSITION_MEASURE_STANDARD_DEVIATION,
                   ACCELERATION_MEASURE_STANDARD_DEVIATION,
                   millis());
+  //delay(MS5611_CONV_DELAY); //not needed since mpuInit() takes >50 ms
+
+  //start MPU
+#ifdef MPU6050_INTERRUPT_PIN
+  attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), mpuInterrupt, RISING);
+#endif
+  mpuInit(); // load dmp and setup for normal use
                   
   /* init history */
 #if defined(HAVE_GPS) || defined(VARIOMETER_DISPLAY_INTEGRATED_CLIMB_RATE)
@@ -384,22 +368,22 @@ void loop() {
   /*****************************/
   /* compute vertical velocity */
   /*****************************/
-#ifdef HAVE_ACCELEROMETER
-  if( twScheduler.havePressure() && twScheduler.haveAccel() ) {
-    kalmanvert.update( twScheduler.getAlti(),
-                       twScheduler.getAccel(NULL),
+  //new DMP packet ready
+  if (mpuNewDmp()) { // read interrupt status register
+    float alt = msComputeAltitude();
+    msStartMeasure();
+    mpuGetFIFO(gyro, accel, quat);
+    float vertAccel = getVertaccel(accel, quat);
+    kalmanvert.update( alt,
+                       vertAccel,
                        millis() );
-#else
-  if( twScheduler.havePressure() ) {
-    kalmanvert.update( twScheduler.getAlti(),
-                       0.0,
-                       millis() );
-#endif //HAVE_ACCELEROMETER
 
     /* set beeper */
 #ifdef HAVE_SPEAKER
     beeper.setVelocity( kalmanvert.getVelocity() );
 #endif //HAVE_SPEAKER
+  }
+
 
     /* set history */
 #if defined(HAVE_GPS) || defined(VARIOMETER_DISPLAY_INTEGRATED_CLIMB_RATE)
@@ -422,8 +406,6 @@ void loop() {
 #endif //VARIOMETER_DISPLAY_INTEGRATED_CLIMB_RATE
 #endif //HAVE_SCREEN
    
-    
-  }
 
   /*****************/
   /* update beeper */
