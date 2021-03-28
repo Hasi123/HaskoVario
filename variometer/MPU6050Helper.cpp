@@ -3,6 +3,7 @@
 #include "I2CHelper.h"
 #include "inv_dmp_uncompress.h"
 #include <EEPROM.h>
+#include "toneAC.h"
 
 //check if mpu is not being moved
 //based on variance of gyro values
@@ -45,7 +46,6 @@ short readWordAveraged(unsigned char devAddr, unsigned char regAddr, unsigned sh
 
 //calibrate mpu if initially up side down
 void mpuCalibrate(void) {
-  pinMode(LED_BUILTIN, OUTPUT);
   ////////////
   //init mpu//
   ////////////
@@ -58,7 +58,8 @@ void mpuCalibrate(void) {
   //calibration units are in 1000 gyro and 16 accel range
   delay(50);
 
-  if (readWordAveraged(mpuAddr, MPU6050_RA_ACCEL_ZOUT_H, 100) > -1850) { //check if up side down: less than -90% gravity
+  short getZ = readWordAveraged(mpuAddr, MPU6050_RA_ACCEL_ZOUT_H, 200);
+  if ((getZ > -1750) || !isResting()) { //check if up side down (allow for calibration error) and if stationary
     return;
   }
 
@@ -113,17 +114,13 @@ void mpuCalibrate(void) {
         if (!bitRead(calibState, accIndex) && accelData[i] > 1500) { //not set and positive
           accelMax[accIndex] = accelData[i];
           bitSet(calibState, accIndex);
-          digitalWrite(LED_BUILTIN, HIGH);
-          delay(200);
-          digitalWrite(LED_BUILTIN, LOW);
+          toneAC(700, 10, 300, true);
         }
         accIndex++;
         if (!bitRead(calibState, accIndex) && accelData[i] < -1500) { //not set and negative
           accelMax[accIndex] = accelData[i];
           bitSet(calibState, accIndex);
-          digitalWrite(LED_BUILTIN, HIGH);
-          delay(200);
-          digitalWrite(LED_BUILTIN, LOW);
+          toneAC(700, 10, 300, true);
         }
       }
     }
