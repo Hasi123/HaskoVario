@@ -89,13 +89,18 @@ void VarioPower::sleep() {
 
 void VarioPower::init() {
   //disable watchdog to avoid WDT bootloop
-  MCUSR = 0;
-  wdt_disable();
+  //actually not needed since done in optiboot bootloader
+  //MCUSR = 0;
+  //wdt_disable();
 
   //setup pins and analog reference
   //LDO is enabled by bootloader
   analogReference(INTERNAL);
   pinMode(INTPIN, INPUT_PULLUP);
+  
+  //trun on LDO
+  DDRD |= (1 << PD5);
+  PORTD |= (1 << PD5);
   
   beepStatus = 0;  //this needed?
   nextEvent = 0;
@@ -106,6 +111,14 @@ void VarioPower::init() {
   //R1: 10M, R2: 3M
   if (analogRead(A1) < 730) { //smaller 3.4V
     this->sleep();
+  }
+  
+  //need to update?
+  if (!digitalRead(INTPIN)) {
+    cli();
+    SP = RAMEND;
+    void* bootloader = (void*)0x7800;
+    goto *bootloader;
   }
 }
 
