@@ -13,11 +13,11 @@ float msCoeffs[6] = {32768L, 65536L, 3.90625E-3, 7.8125E-3, 256, 1.1920928955E-7
 void msStartMeasure(void) {
   static uint8_t counter = 0;
   if (counter) { //get pressure
-    sendCMD(msAddr, MS5611_CONV_D1);
+    I2C::sendCMD(msAddr, MS5611_CONV_D1);
     msCurrentType = 1;
   }
   else { //get temperature
-    sendCMD(msAddr, MS5611_CONV_D2);
+    I2C::sendCMD(msAddr, MS5611_CONV_D2);
     msCurrentType = 0;
     counter = MS5611_TEMP_EVERY;
   }
@@ -27,22 +27,22 @@ void msStartMeasure(void) {
 //get measurement
 void msGetMeasure(void) {
   if (msCurrentType) { //get pressure
-    d1 = read24(msAddr, MS5611_ADC_READ);
+    d1 = I2C::read24(msAddr, MS5611_ADC_READ);
   }
   else { //get temperature
-    d2 = read24(msAddr, MS5611_ADC_READ);
+    d2 = I2C::read24(msAddr, MS5611_ADC_READ);
   }
 }
 
 void msInit(void) {
   /* reset */
-  sendCMD(msAddr, MS5611_RESET);
+  I2C::sendCMD(msAddr, MS5611_RESET);
   delay(MS5611_RESET_DELAY);
 
   //read factory calibrations from PROM
   //multiply with constant values from datasheet
   for (uint8_t reg = 0; reg < 6; reg++) {
-    msCoeffs[reg] *= (uint16_t)readWord(msAddr, MS5611_READ_PROM + (reg * 2));
+    msCoeffs[reg] *= (uint16_t)I2C::readWord(msAddr, MS5611_READ_PROM + (reg * 2));
   }
 
   /* get first data */

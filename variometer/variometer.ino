@@ -321,7 +321,7 @@ void setup() {
   /**************************/
   /* init Two Wires devices */
   /**************************/
-  I2Cbegin();
+  I2C::begin();
 
   //MPU6050 calibration
   mpuCalibrate(); //run calibration if up side down
