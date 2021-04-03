@@ -27,12 +27,11 @@ void setup() {
     ms.startMeasure();
     delay(MS5611_CONV_DELAY);
   }
-  
+
   //init kalman filter
-  ms.compute();
+  ms.update();
   float firstAlti = ms.getAltitude();
   Serial.println(firstAlti);
-  ms.startMeasure(); //get measurement for loop()
   kalmanvert.init(firstAlti,
                   0.0,
                   POSITION_MEASURE_STANDARD_DEVIATION,
@@ -40,26 +39,14 @@ void setup() {
                   millis());
   //delay(MS5611_CONV_DELAY); //not needed since mpuInit() takes >50 ms
 
-  //start MPU
-#ifdef MPU6050_INTERRUPT_PIN
-  attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), mpuInterrupt, RISING);
-#endif
-
   mpu.init(); // load dmp and setup for normal use
 }
 
 void loop() {
 
-  //new DMP packet ready
-#ifdef MPU6050_INTERRUPT_PIN
-  if (mpu.newDMP) { //hardware interrupt triggered
-    mpu.newDMP = 0;
-#else
-  if (mpu.newDmp()) { // read interrupt status register
-#endif
-    ms.compute();
+  if (mpu.newDmp()) {
+    ms.update();
     float alt = ms.getAltitude();
-    ms.startMeasure();
     mpu.getFIFO(gyro, accel, quat);
     float vertAccel = mpu.getVertaccel(accel, quat);
     kalmanvert.update( alt,
@@ -71,10 +58,3 @@ void loop() {
     Serial.println(kalmanvert.getVelocity());
   }
 }
-
-//ISR must be defined here
-#ifdef MPU6050_INTERRUPT_PIN
-void mpuInterrupt() {
-  mpu.newDMP = 1;
-}
-#endif

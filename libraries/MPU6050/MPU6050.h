@@ -384,9 +384,8 @@
 
 /* config settings here */
 #define MPU6050_ACCEL_FS MPU6050_ACCEL_FS_2  //define accel range here
-//#define MPU6050_INTERRUPT_PIN 2 //to which pin is the interrupt conected, comment out if not attached
+#define MPU6050_INTERRUPT_PIN 2 //to which pin is the interrupt conected, comment out if not attached
 #define MPU6050_SAMPLE_RATE 200 //has to be double as DMP rate
-
 
 class MPU6050 {
   public:
@@ -396,9 +395,6 @@ class MPU6050 {
     char getFIFO(short *gyro, short *accel, long *quat);
     bool newDmp(void);
     double getVertaccel(short *imuAccel, long *imuQuat);
-#ifdef MPU6050_INTERRUPT_PIN
-    bool newDMP = 0;
-#endif
 
   private:
     unsigned char mpuAddr;

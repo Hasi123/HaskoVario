@@ -237,7 +237,7 @@ char MPU6050::load_dmp() {  //using compressed DMP firmware
 void MPU6050::init(void) {
   //#define RESET_MPU //not needed after mpuCalibrate is called
 #ifdef RESET_MPU
-  I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, bit(MPU6050_PWR1_DEVICE_RESET_BIT)); //reset
+  I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, _BV(MPU6050_PWR1_DEVICE_RESET_BIT)); //reset
   delay(100);
 #endif
   I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_CLOCK_PLL_XGYRO); //wake up and set clock to gyro X (recomended by datasheet)
@@ -247,7 +247,7 @@ void MPU6050::init(void) {
   I2C::writeByte(mpuAddr, MPU6050_RA_SMPLRT_DIV, 1000 / MPU6050_SAMPLE_RATE - 1);  //sample rate divider
 #ifdef MPU6050_INTERRUPT_PIN
   //writeByte(mpuAddr, MPU6050_RA_INT_ENABLE, 0); //disable interrupts, already 0 by default
-  I2C::writeByte(mpuAddr, MPU6050_RA_INT_PIN_CFG, bit(MPU6050_INTCFG_LATCH_INT_EN_BIT) | bit(MPU6050_INTCFG_INT_RD_CLEAR_BIT)); //setup interrupt pin
+  I2C::writeByte(mpuAddr, MPU6050_RA_INT_PIN_CFG, _BV(MPU6050_INTCFG_LATCH_INT_EN_BIT) | _BV(MPU6050_INTCFG_INT_RD_CLEAR_BIT)); //setup interrupt pin
 #endif
 
   //load calibration data from EEPROM
@@ -258,11 +258,11 @@ void MPU6050::init(void) {
   load_dmp();
 
   //writeByte(mpuAddr, MPU6050_RA_FIFO_EN, 0); //disable FIFO, already 0 by default
-  I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, bit(MPU6050_USERCTRL_DMP_RESET_BIT) | bit(MPU6050_USERCTRL_FIFO_RESET_BIT)); //reset FIFO and DMP
+  I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, _BV(MPU6050_USERCTRL_DMP_RESET_BIT) | _BV(MPU6050_USERCTRL_FIFO_RESET_BIT)); //reset FIFO and DMP
   delay(50);
-  I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, bit(MPU6050_USERCTRL_DMP_EN_BIT) | bit(MPU6050_USERCTRL_FIFO_EN_BIT)); //enable FIFO and DMP
+  I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, _BV(MPU6050_USERCTRL_DMP_EN_BIT) | _BV(MPU6050_USERCTRL_FIFO_EN_BIT)); //enable FIFO and DMP
 #ifdef MPU6050_INTERRUPT_PIN
-  I2C::writeByte(mpuAddr, MPU6050_RA_INT_ENABLE, bit(MPU6050_INTERRUPT_DMP_INT_BIT)); //hardware DMP interrupt needed? yes in this case, else set to 0
+  I2C::writeByte(mpuAddr, MPU6050_RA_INT_ENABLE, _BV(MPU6050_INTERRUPT_DMP_INT_BIT)); //enable hardware DMP interrupt
 #endif
 
 }
@@ -275,9 +275,9 @@ char MPU6050::getFIFO(short *gyroData, short *accelData, long *quatData) {
   unsigned short fifo_count = I2C::readWord(mpuAddr, MPU6050_RA_FIFO_COUNTH);
 
   if (fifo_count != FIFO_SIZE) { //reset FIFO if more data than 1 packet
-    I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, bit(MPU6050_USERCTRL_FIFO_RESET_BIT)); //reset FIFO
+    I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, _BV(MPU6050_USERCTRL_FIFO_RESET_BIT)); //reset FIFO
     delay(50);
-    I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, bit(MPU6050_USERCTRL_DMP_EN_BIT) | bit(MPU6050_USERCTRL_FIFO_EN_BIT)); //enable FIFO and DMP
+    I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, _BV(MPU6050_USERCTRL_DMP_EN_BIT) | _BV(MPU6050_USERCTRL_FIFO_EN_BIT)); //enable FIFO and DMP
     return -1;
   }
   else {
@@ -303,7 +303,11 @@ char MPU6050::getFIFO(short *gyroData, short *accelData, long *quatData) {
 }
 
 bool MPU6050::newDmp() {
+#ifdef MPU6050_INTERRUPT_PIN
+  return digitalRead(MPU6050_INTERRUPT_PIN);
+#else
   return bitRead(I2C::readByte(mpuAddr, MPU6050_RA_INT_STATUS), MPU6050_INTERRUPT_DMP_INT_BIT);
+#endif
 }
 
 /* compute vertical vector and vertical accel from IMU data */

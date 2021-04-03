@@ -147,13 +147,13 @@
 #define HAVE_SPEAKER
 #define HAVE_ACCELEROMETER
 //#define HAVE_SCREEN
-#define HAVE_GPS
-#define HAVE_SDCARD
+//#define HAVE_GPS
+//#define HAVE_SDCARD
 //#define HAVE_BLUETOOTH
 //#define HAVE_VOLTAGE_DIVISOR
 
 /* enable if you want to use the MPU INT pin */
-#define MPU_ENABLE_INT_PIN
+//#define MPU_ENABLE_INT_PIN
 #define MPU_INT_PIN 2
 
 /* Set the pins used for Screen and SD card modules */

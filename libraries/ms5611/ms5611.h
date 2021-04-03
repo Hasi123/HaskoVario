@@ -1,10 +1,14 @@
 /*
   How to use:
-  Init once in Setup() with msInit();
+  ms5611 ms; //create object
+  
+  void setup() {
+	ms.init(); //Init once in setup()
+  }
 
-  msStartMeasure() // will read temperature every MS5611_TEMP_EVERY readings
-  delay(MS5611_CONV_DELAY)
-  float alt = msComputeAltitude() //or msComputePressure() or msComputeTemperature() depending on what you need
+  ms.update(); // will read temperature every MS5611_TEMP_EVERY readings
+  delay(MS5611_CONV_DELAY); //update() can be called at most every MS5611_CONV_DELAY milliseconds
+  float alt = ms.getAltitude(); //or ms.getPressure() or ms.getTemperature() depending on what you need
 */
 
 #ifndef _MS5611_H
@@ -38,7 +42,7 @@ class ms5611 {
     void init(void);
     void startMeasure(void);
     void getMeasure(void);
-    void compute(void);
+    void update(void);
     float getAltitude(void);
     float getPressure(void);
     float getTemperature(void);

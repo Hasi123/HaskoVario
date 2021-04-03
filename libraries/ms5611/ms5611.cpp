@@ -51,8 +51,9 @@ void ms5611::init(void) {
   delay(MS5611_CONV_DELAY);*/
 }
 
-void ms5611::compute(void) {
+void ms5611::update(void) {
   getMeasure();
+  startMeasure();
   
   // ALL MAGIC NUMBERS ARE FROM DATASHEET
   // TEMP & PRESS MATH - PAGE 7/20
