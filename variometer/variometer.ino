@@ -33,7 +33,7 @@
 #include <digit.h>
 #include <LightSdCard.h>
 #include <LightFat16.h>
-//#include <SerialNmea.h>
+#include <SerialNmea.h>
 #include <NmeaParser.h>
 #include <LxnavSentence.h>
 #include <LK8Sentence.h>
