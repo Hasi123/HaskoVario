@@ -24,13 +24,20 @@
 #include <avr/wdt.h>
 #include <marioSounds.h>
 
-//can´t be part of the class
+//ISRs can´t be part of the class
 void wakeUp() {
   //disable interrupts to avoid interrupt bootloop
   noInterrupts();
 }
+void reset() {
+  wdt_enable(WDTO_1S);
+}
 
 void VarioPower::sleep() {
+  //disable reset watchdog
+  detachInterrupt(digitalPinToInterrupt(INTPIN));
+  wdt_disable();
+
   //disable interfaces to be able to reconfigure pins
   //disable TWI
   TWCR &= ~(1 << TWEN);
@@ -57,12 +64,12 @@ void VarioPower::sleep() {
   ADCSRA = 0;
 
   noInterrupts();
-  set_sleep_mode (SLEEP_MODE_PWR_DOWN);
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   sleep_enable();
 
   //enable external interrupt to wake CPU
   EIFR = 3;  // clear flag for interrupts (shouldn't be needed)
-  attachInterrupt (digitalPinToInterrupt(INTPIN), wakeUp, LOW);  //only LOW level interrupt is allowed to wake from sleep
+  attachInterrupt(digitalPinToInterrupt(INTPIN), wakeUp, LOW);  //only LOW level interrupt is allowed to wake from sleep
 
   //turn off brown-out enable in software, will be automatically reenabled after wake
   sleep_bod_disable();
@@ -78,6 +85,7 @@ void VarioPower::sleep() {
   //////////////
 
   //ISR routine runs
+  
   sleep_disable();
 
   //reset atmega
@@ -94,7 +102,6 @@ void VarioPower::init() {
   //wdt_disable();
 
   //setup pins and analog reference
-  //LDO is enabled by bootloader
   analogReference(INTERNAL);
   pinMode(INTPIN, INPUT_PULLUP);
   
@@ -120,6 +127,9 @@ void VarioPower::init() {
     void* bootloader = (void*)0x7800;
     goto *bootloader;
   }
+  
+  //reset mcu after 1s on button push if code hangs somewhere
+  attachInterrupt(digitalPinToInterrupt(INTPIN), reset, FALLING);
 }
 
 bool VarioPower::update() {
