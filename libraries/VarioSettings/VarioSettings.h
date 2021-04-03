@@ -152,32 +152,6 @@
 //#define HAVE_BLUETOOTH
 //#define HAVE_VOLTAGE_DIVISOR
 
-/* ms5611 parameters */
-/* You can set the calibration coefficients if known */
-#define MS5611_STATIC_ADDRESS 0x77
-//#define MS5611_STATIC_CALIBRATION {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}
-
-/* We advice using the ms5611 barometer */
-/* but if you want to use the BMP280 you can enable it here */
-//#define HAVE_BMP280
-#define BMP280_STATIC_ADDRESS 0x76
-//#define BMP280_STATIC_CALIBRATION {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}
-
-/* If you embed an accelerometer set the model here. */
-/* Possible values are :                             */
-/*   MPU6050, MPU6500, MPU9150, MPU9250              */
-#define MPU6050
-#define MPU_STATIC_ADDRESS 0x69
-
-/* calibration method */
-// comment this following line to use EEPROM instead of static values
-#define VERTACCEL_STATIC_CALIBRATION
-#define VERTACCEL_GYRO_CAL_BIAS {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-#define VERTACCEL_ACCEL_CAL_BIAS {0, 0, 0}
-#define VERTACCEL_ACCEL_CAL_SCALE 0
-#define VERTACCEL_MAG_CAL_BIAS {0, 0, 0}
-#define VERTACCEL_MAG_CAL_PROJ_SCALE -16689
-
 /* enable if you want to use the MPU INT pin */
 #define MPU_ENABLE_INT_PIN
 #define MPU_INT_PIN 2
@@ -222,13 +196,6 @@
 #define NMEA_RMC_SPEED_PRECISION 1000.0
 #define NMEA_GGA_TIME_PRECISION 100
 #define NMEA_GGA_ALTI_PRECISION 10.0
-
-/*********************/
-/* TWO WIRE settings */
-/*********************/
-
-/* Set the freq */
-#define VARIO_TW_FREQ 400000UL
 
 
 #endif

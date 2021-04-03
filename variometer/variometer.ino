@@ -22,10 +22,10 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <VarioSettings.h>
-#include "I2CHelper.h"
-#include "MPU6050Helper.h"
-#include "ms5611Helper.h"
-#include "kalmanvert.h"
+#include <I2CHelper.h>
+#include <MPU6050.h>
+#include <ms5611.h>
+#include <kalmanvert.h>
 #include <beeper.h>
 #include <toneAC.h>
 #include <avr/pgmspace.h>
@@ -52,6 +52,9 @@
 /* Custom objects  */
 /*******************/
 VarioPower varioPower;
+kalmanvert kalmanvert;
+MPU6050 mpu;
+ms5611 ms;
 
 /*******************/
 /* General objects */
@@ -150,7 +153,6 @@ ScreenScheduler varioScreen(screen, displayList, sizeof(displayList)/sizeof(Scre
 /**********************/
 /* alti/vario objects */
 /**********************/
-kalmanvert kalmanvert;
 short gyro[3], accel[3];
 long quat[4];
 
@@ -251,19 +253,6 @@ unsigned long lastVarioSentenceTimestamp = 0;
 #endif // !HAVE_GPS
 #endif //HAVE_BLUETOOTH
 
-#if defined(HAVE_ACCELEROMETER) && defined(HAVE_SPEAKER) && defined(MUTE_ON_TAP)
-/* tap callback : mute/unmute beeper */
-void beeperTapCallback(unsigned char direction, unsigned char count) { 
-
-  static bool muted = false;
-  muted = !muted;
-  toneACMute(muted);
-#ifdef HAVE_SCREEN
-  muteIndicator.setMuteState(muted);
-#endif //HAVE_SCREEN
-}
-#endif //defined(HAVE_ACCELEROMETER) && defined(HAVE_SPEAKER) 
-
 
 /*-----------------*/
 /*      SETUP      */
@@ -324,31 +313,33 @@ void setup() {
   I2C::begin();
 
   //MPU6050 calibration
-  mpuCalibrate(); //run calibration if up side down
+  mpu.calibrate(); //run calibration if up side down
 
   //ms5611
-  msInit();
-  for (uint8_t i = 0; i < (MS5611_TEMP_EVERY + 1); i++) { //half second
-    msGetMeasure();
-    msStartMeasure();
+  ms.init();
+  for (uint8_t i = 0; i < (MS5611_TEMP_EVERY + 1); i++) {
+    ms.getMeasure();
+    ms.startMeasure();
     delay(MS5611_CONV_DELAY);
   }
 
   //init kalman filter
-  float firstAlti = msComputeAltitude();
-  msStartMeasure(); //get measurement for loop()
+  ms.compute();
+  float firstAlti = ms.getAltitude();
+  ms.startMeasure(); //get measurement for loop()
   kalmanvert.init(firstAlti,
                   0.0,
                   POSITION_MEASURE_STANDARD_DEVIATION,
                   ACCELERATION_MEASURE_STANDARD_DEVIATION,
                   millis());
-  //delay(MS5611_CONV_DELAY); //not needed since mpuInit() takes >50 ms
+  //delay(MS5611_CONV_DELAY); //not needed since mpu.init() takes >50 ms
 
   //start MPU
 #ifdef MPU6050_INTERRUPT_PIN
   attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), mpuInterrupt, RISING);
 #endif
-  mpuInit(); // load dmp and setup for normal use
+
+  mpu.init(); // load dmp and setup for normal use
                   
   /* init history */
 #if defined(HAVE_GPS) || defined(VARIOMETER_DISPLAY_INTEGRATED_CLIMB_RATE)
@@ -369,11 +360,12 @@ void loop() {
   /* compute vertical velocity */
   /*****************************/
   //new DMP packet ready
-  if (mpuNewDmp()) { // read interrupt status register
-    float alt = msComputeAltitude();
-    msStartMeasure();
-    mpuGetFIFO(gyro, accel, quat);
-    float vertAccel = getVertaccel(accel, quat);
+  if (mpu.newDmp()) { // read interrupt status register
+    ms.compute();
+    float alt = ms.getAltitude();
+    ms.startMeasure();
+    mpu.getFIFO(gyro, accel, quat);
+    float vertAccel = mpu.getVertaccel(accel, quat);
     kalmanvert.update( alt,
                        vertAccel,
                        millis() );

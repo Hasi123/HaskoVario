@@ -1,16 +1,14 @@
 #include <Arduino.h>
-#include "ms5611Helper.h"
-#include "I2CHelper.h"
+#include "ms5611.h"
+#include <I2CHelper.h>
 
-//internal variables
-const unsigned char msAddr = MS5611_DEFAULT_ADDRESS;
-float temperature, pressure;
-bool msCurrentType;
-uint32_t d1, d2;
-float msCoeffs[6] = {32768L, 65536L, 3.90625E-3, 7.8125E-3, 256, 1.1920928955E-7};
+//constructor
+ms5611::ms5611(unsigned char Addr){
+  msAddr = Addr;
+}
 
 //issue command to start measurement
-void msStartMeasure(void) {
+void ms5611::startMeasure(void) {
   static uint8_t counter = 0;
   if (counter) { //get pressure
     I2C::sendCMD(msAddr, MS5611_CONV_D1);
@@ -25,7 +23,7 @@ void msStartMeasure(void) {
 }
 
 //get measurement
-void msGetMeasure(void) {
+void ms5611::getMeasure(void) {
   if (msCurrentType) { //get pressure
     d1 = I2C::read24(msAddr, MS5611_ADC_READ);
   }
@@ -34,7 +32,7 @@ void msGetMeasure(void) {
   }
 }
 
-void msInit(void) {
+void ms5611::init(void) {
   /* reset */
   I2C::sendCMD(msAddr, MS5611_RESET);
   delay(MS5611_RESET_DELAY);
@@ -46,16 +44,17 @@ void msInit(void) {
   }
 
   /* get first data */
-  msStartMeasure(); //temp
+  /*startMeasure(); //temp
   delay(MS5611_CONV_DELAY);
-  msGetMeasure();
-  msStartMeasure(); //pressure
-  delay(MS5611_CONV_DELAY);
+  getMeasure();
+  startMeasure(); //pressure
+  delay(MS5611_CONV_DELAY);*/
 }
 
-void computeFloat() {
+void ms5611::compute(void) {
+  getMeasure();
+  
   // ALL MAGIC NUMBERS ARE FROM DATASHEET
-
   // TEMP & PRESS MATH - PAGE 7/20
   float dT = d2 - msCoeffs[4];
   temperature = 2000 + dT * msCoeffs[5];
@@ -88,24 +87,17 @@ void computeFloat() {
   pressure = (d1 * sens * 4.76837158205E-7 - offset) * 3.051757813E-7;
 }
 
-float msComputeAltitude(void) {
-  msGetMeasure();
-  computeFloat();
+float ms5611::getAltitude(void) {
   float alti;
   alti = pow((pressure / (MS5611_BASE_SEA_PRESSURE)), 0.1902664357); //could approximate with taylor series to save ~1kb
   alti = (1 - alti) * 44330;
   return alti;
 }
 
-float msComputePressure(void) {
-  msGetMeasure();
-  computeFloat();
+float ms5611::getPressure(void) {
   return pressure;
 }
 
-float msComputeTemperature(void) {
-  msGetMeasure();
-  computeFloat();
-  temperature *= 0.01;
-  return temperature;
+float ms5611::getTemperature(void) {
+  return (temperature * 0.01);
 }

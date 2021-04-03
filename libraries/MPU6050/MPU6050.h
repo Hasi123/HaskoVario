@@ -1,5 +1,5 @@
-#ifndef MPU6050HELPER_H
-#define MPU6050HELPER_H
+#ifndef _MPU6050_H
+#define _MPU6050_H
 
 #include <Arduino.h>
 
@@ -382,28 +382,38 @@
 #define MPU6050_DMP_MEMORY_CHUNK_SIZE   16
 #define MPU6050_DMP_START_ADDRESS       0x0400
 
-const unsigned char mpuAddr = MPU6050_DEFAULT_ADDRESS;
-
 /* config settings here */
 #define MPU6050_ACCEL_FS MPU6050_ACCEL_FS_2  //define accel range here
 //#define MPU6050_INTERRUPT_PIN 2 //to which pin is the interrupt conected, comment out if not attached
 #define MPU6050_SAMPLE_RATE 200 //has to be double as DMP rate
 
+
+class MPU6050 {
+  public:
+    MPU6050(unsigned char Addr = MPU6050_DEFAULT_ADDRESS);
+    void calibrate(void);
+    void init(void);
+    char getFIFO(short *gyro, short *accel, long *quat);
+    bool newDmp(void);
+    double getVertaccel(short *imuAccel, long *imuQuat);
 #ifdef MPU6050_INTERRUPT_PIN
-static bool newDMP = 0;
+    bool newDMP = 0;
 #endif
 
-struct calibStruct {
-  short gyrOffs[3];
-  short accOffs[3];
-  unsigned char fineGain[3];
+  private:
+    unsigned char mpuAddr;
+    struct calibStruct {
+      short gyrOffs[3];
+      short accOffs[3];
+      unsigned char fineGain[3];
+    };
+    calibStruct calibData;
+    bool isResting(unsigned short threshold = 10000);
+    short readWordAveraged(unsigned char devAddr, unsigned char regAddr, unsigned short loops);
+    void load_calibration(short *gyro_offs, short *accel_offs, unsigned char *fine_gain);
+    char mpu_write_mem(unsigned short mem_addr, unsigned short length, unsigned char *data);
+    char mpu_read_mem(unsigned short mem_addr, unsigned short length, unsigned char *data);
+    char load_dmp();
 };
-
-
-void mpuCalibrate(void);
-void mpuInit(void);
-char mpuGetFIFO(short *gyro, short *accel, long *quat);
-bool mpuNewDmp(void);
-double getVertaccel(short *imuAccel, long *imuQuat);
 
 #endif

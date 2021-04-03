@@ -7,8 +7,8 @@
   float alt = msComputeAltitude() //or msComputePressure() or msComputeTemperature() depending on what you need
 */
 
-#ifndef MS5611HELPER_H
-#define MS5611HELPER_H
+#ifndef _MS5611_H
+#define _MS5611_H
 
 #include <Arduino.h>
 
@@ -32,12 +32,23 @@
 //values for calculations
 #define MS5611_BASE_SEA_PRESSURE 1013.25
 
-//functions to call
-void msInit(void);
-void msStartMeasure(void);
-void msGetMeasure(void);
-float msComputeAltitude(void);
-float msComputePressure(void);
-float msComputeTemperature(void);
+class ms5611 {
+  public:
+    ms5611(unsigned char Addr = MS5611_DEFAULT_ADDRESS);
+    void init(void);
+    void startMeasure(void);
+    void getMeasure(void);
+    void compute(void);
+    float getAltitude(void);
+    float getPressure(void);
+    float getTemperature(void);
+
+  private:
+    unsigned char msAddr;
+    float temperature, pressure;
+    bool msCurrentType;
+    uint32_t d1, d2;
+    float msCoeffs[6] = {32768L, 65536L, 3.90625E-3, 7.8125E-3, 256, 1.1920928955E-7};
+};
 
 #endif
