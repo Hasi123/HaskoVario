@@ -361,7 +361,8 @@ void loop() {
     mpu.getFIFO(gyro, accel, quat);
     float vertAccel = mpu.getVertaccel(accel, quat);
 
-    kalmanvert.update(alt, vertAccel, millis());
+    if (!isnan(alt) && !isnan(vertAccel)) //filter out bad readings
+      kalmanvert.update(alt, vertAccel, millis());
 
     /* set beeper */
 #ifdef HAVE_SPEAKER
