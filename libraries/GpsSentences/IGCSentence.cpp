@@ -55,15 +55,6 @@ const char* headerStrings[] = {IGCHeader00,
                               IGCHeader11};
 
 
-
-static void EEPROMUpdate(int address, uint8_t value) {
-
-  if( EEPROM.read(address) != value ) {
-    EEPROM.write(address, value);
-  }
-}
-  
-
 bool IGCHeader::saveParams(const char* model, const char* pilot, const char* glider) {
 
   /******************************/
@@ -139,7 +130,7 @@ bool IGCHeader::saveParams(const char* model, const char* pilot, const char* gli
 
   /* save to eeprom */
   for( int i = 0; i<6; i++) {
-    EEPROMUpdate(eepromAddress, valBuffer[i]);
+    EEPROM.update(eepromAddress, valBuffer[i]);
     eepromAddress++;
   }
   
@@ -160,7 +151,7 @@ bool IGCHeader::saveParams(const char* model, const char* pilot, const char* gli
 
     /* else save char */
     else {
-      EEPROMUpdate(eepromAddress, c);
+      EEPROM.update(eepromAddress, c);
       eepromAddress++;
       stringPos++;
     }

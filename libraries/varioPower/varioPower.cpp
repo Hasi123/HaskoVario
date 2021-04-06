@@ -120,7 +120,7 @@ void VarioPower::init() {
   }
   
   //need to update?
-  if (!digitalRead(INTPIN)) {
+  if (!(PIND & (1 << INTPIN))) {
     cli();
     SP = RAMEND;
     void* bootloader = (void*)0x7800;
@@ -132,7 +132,7 @@ void VarioPower::init() {
 }
 
 bool VarioPower::update() {
-  if (!(PIND & (1 << INTPINREG))) {
+  if (!(PIND & (1 << INTPIN))) {
     this->sleep();
   }
 

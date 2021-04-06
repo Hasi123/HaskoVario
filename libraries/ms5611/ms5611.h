@@ -39,8 +39,7 @@
 //timer 2 defines
 //#define MS5611_USE_TIMER
 #ifdef MS5611_USE_TIMER
-//startMeasure() and getMeasure() take max 0.488ms on 16MHz
-//startMeasure() and getMeasure() take max 0.976 on 8MHz
+//startMeasure() and getMeasure() take max 0.488ms on 16MHz and 0.976ms on 8MHz
 #if F_CPU == 16000000L
 #define MS5611_INTERRUPT_COMPARE 160 //10.048 ms
 #elif F_CPU == 8000000L
@@ -60,7 +59,9 @@ class ms5611 {
     static float getAltitude(void);
     static float getPressure(void);
     static float getTemperature(void);
-	//static bool ready(void);
+#ifdef MS5611_USE_TIMER
+	static bool ready(void);
+#endif
 
   private:
     ms5611(void) {} //disable creating other instances
@@ -70,7 +71,9 @@ class ms5611 {
     //static uint32_t volatile msMeasure;
 	static uint32_t volatile d1, d2;
     static float msCoeffs[6];
-	//static bool msReady;
+#ifdef MS5611_USE_TIMER
+	static bool msReady;
+#endif
 };
 
 extern ms5611 ms;

@@ -9,7 +9,9 @@ uint8_t volatile ms5611::msCurrentType = 0;
 uint32_t volatile ms5611::d1;
 uint32_t volatile ms5611::d2;
 float ms5611::msCoeffs[6] = {32768L, 65536L, 3.90625E-3, 7.8125E-3, 256, 1.1920928955E-7};
-//bool ms5611::msReady = 0;
+#ifdef MS5611_USE_TIMER
+bool ms5611::msReady = 0;
+#endif
 
 //issue command to start measurement
 void ms5611::startMeasure(void) {
@@ -32,7 +34,9 @@ void ms5611::getMeasure(void) {
   else { //get pressure
     d1 = I2C::read24(msAddr, MS5611_ADC_READ);
   }
-  //msReady = true;
+#ifdef MS5611_USE_TIMER
+  msReady = true;
+#endif
 }
 
 void ms5611::init(void) {
@@ -63,7 +67,9 @@ TIMSK2 = 0;
 }
 
 void ms5611::update(void) {
-  //msReady = false;
+  #ifdef MS5611_USE_TIMER
+  msReady = false;
+  #endif
   
   /*
   cli();
@@ -121,13 +127,13 @@ float ms5611::getPressure(void) {
 float ms5611::getTemperature(void) {
   return (temperature * 0.01);
 }
-/*
+
+#ifdef MS5611_USE_TIMER
 bool ms5611::ready(void) {
   return msReady;
 }
-*/
+
 //get and start measures
-#ifdef MS5611_USE_TIMER
 ISR (TIMER2_COMPA_vect) {
   ms5611::getMeasure();
   ms5611::startMeasure();

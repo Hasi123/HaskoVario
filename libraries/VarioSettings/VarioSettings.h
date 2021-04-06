@@ -51,9 +51,6 @@
 /* The volume of the beeps, max = 10 */
 #define VARIOMETER_BEEP_VOLUME 10
 
-/* Enable mute on tap feature */
-//#define MUTE_ON_TAP
-
 /* The variometer react like this according to vertical speed in m/s :        */
 /* (near climbing beep is not enabled by default)                             */
 /*                                                                            */
@@ -157,17 +154,12 @@
 #define VARIOSCREEN_CS_PIN 7
 #define VARIOSCREEN_RST_PIN 14
 #define SDCARD_CS_PIN 8
-#define VOLTAGE_DIVISOR_PIN 15
 
 /* time needed to power on all the devices */
 #define VARIOMETER_POWER_ON_DELAY 2000
 
 /* The screen contrast */
 #define VARIOSCREEN_CONTRAST 60
-
-/* The voltage divisor */
-#define VOLTAGE_DIVISOR_VALUE 1.27
-#define VOLTAGE_DIVISOR_REF_VOLTAGE 3.3
 
 /* The bauds rate used by the GPS and Bluetooth modules. */
 /* GPS and bluetooth need to have the same bauds rate.   */

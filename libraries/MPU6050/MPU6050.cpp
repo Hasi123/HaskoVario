@@ -272,19 +272,16 @@ void MPU6050::init(void) {
 char MPU6050::getFIFO(short *gyroData, short *accelData, long *quatData) {
 #define FIFO_SIZE 32
   unsigned char fifo_data[FIFO_SIZE];
-  cli();
   unsigned short fifo_count = I2C::readWord(mpuAddr, MPU6050_RA_FIFO_COUNTH);
 
   if (fifo_count != FIFO_SIZE) { //reset FIFO if more data than 1 packet
     I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, _BV(MPU6050_USERCTRL_FIFO_RESET_BIT)); //reset FIFO
     delay(50);
     I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, _BV(MPU6050_USERCTRL_DMP_EN_BIT) | _BV(MPU6050_USERCTRL_FIFO_EN_BIT)); //enable FIFO and DMP
-    sei();
     return -1;
   }
   else {
     I2C::readBytes(mpuAddr, MPU6050_RA_FIFO_R_W, fifo_count, fifo_data); //get FIFO data
-    sei();
 
     //parse data
     quatData[0] = ((long)fifo_data[0] << 24) | ((long)fifo_data[1] << 16) |
@@ -307,7 +304,7 @@ char MPU6050::getFIFO(short *gyroData, short *accelData, long *quatData) {
 
 bool MPU6050::newDmp() {
 #ifdef MPU6050_INTERRUPT_PIN
-  return digitalRead(MPU6050_INTERRUPT_PIN);
+  return (PIND & (1 << MPU6050_INTERRUPT_PIN));
 #else
   return bitRead(I2C::readByte(mpuAddr, MPU6050_RA_INT_STATUS), MPU6050_INTERRUPT_DMP_INT_BIT);
 #endif
