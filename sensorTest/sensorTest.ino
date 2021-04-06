@@ -5,10 +5,10 @@
 
 kalmanvert kalmanvert;
 MPU6050 mpu;
-ms5611 ms;
 
 short gyro[3], accel[3];
 long quat[4];
+byte newData;
 
 void setup() {
   Serial.begin(57600);
@@ -17,18 +17,16 @@ void setup() {
 
   I2C::begin();
 
-  //MPU6050 calibration
-  mpu.calibrate(); //run calibration if up side down
-
   //ms5611
   ms.init();
-  for (uint8_t i = 0; i < (MS5611_TEMP_EVERY + 1); i++) {
-    ms.getMeasure();
-    ms.startMeasure();
-    delay(MS5611_CONV_DELAY);
-  }
+
+  //MPU6050
+  mpu.calibrate(); //run calibration if up side down
+  mpu.init(); // load dmp and setup for normal use
+  attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING);
 
   //init kalman filter
+  delay(2000); //let alt stabilize
   ms.update();
   float firstAlti = ms.getAltitude();
   Serial.println(firstAlti);
@@ -37,24 +35,26 @@ void setup() {
                   POSITION_MEASURE_STANDARD_DEVIATION,
                   ACCELERATION_MEASURE_STANDARD_DEVIATION,
                   millis());
-  //delay(MS5611_CONV_DELAY); //not needed since mpuInit() takes >50 ms
-
-  mpu.init(); // load dmp and setup for normal use
 }
 
 void loop() {
 
-  if (mpu.newDmp()) {
+  if (newData) {
+    newData = false;
     ms.update();
     float alt = ms.getAltitude();
-    mpu.getFIFO(gyro, accel, quat);
     float vertAccel = mpu.getVertaccel(accel, quat);
-    kalmanvert.update( alt,
-                       vertAccel,
-                       millis() );
+    kalmanvert.update(alt, vertAccel, millis());
 
     Serial.print(alt, 5); Serial.print("\t");
     Serial.print(vertAccel, 5); Serial.print(" \t");
     Serial.println(kalmanvert.getVelocity());
   }
+}
+
+void getSensors() {
+  ms.getMeasure();
+  ms.startMeasure();
+  mpu.getFIFO(gyro, accel, quat);
+  newData = true;
 }

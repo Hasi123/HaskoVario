@@ -54,7 +54,6 @@
 VarioPower varioPower;
 kalmanvert kalmanvert;
 MPU6050 mpu;
-ms5611 ms;
 
 /*******************/
 /* General objects */
@@ -155,6 +154,7 @@ ScreenScheduler varioScreen(screen, displayList, sizeof(displayList) / sizeof(Sc
 /**********************/
 short gyro[3], accel[3];
 long quat[4];
+byte newData;
 
 #ifdef HAVE_SPEAKER
 beeper beeper(VARIOMETER_SINKING_THRESHOLD, VARIOMETER_CLIMBING_THRESHOLD, VARIOMETER_NEAR_CLIMBING_SENSITIVITY, VARIOMETER_BEEP_VOLUME);
@@ -312,18 +312,16 @@ void setup() {
   /**************************/
   I2C::begin();
 
-  //MPU6050 calibration
-  mpu.calibrate(); //run calibration if up side down
-
   //ms5611
   ms.init();
-  for (uint8_t i = 0; i < (MS5611_TEMP_EVERY + 1); i++) {
-    ms.getMeasure();
-    ms.startMeasure();
-    delay(MS5611_CONV_DELAY);
-  }
+
+  //MPU6050
+  mpu.calibrate(); //run calibration if up side down
+  mpu.init(); // load dmp and setup for normal use
+  attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING);
 
   //init kalman filter
+  delay(2000); //let alt stabilize
   ms.update();
   float firstAlti = ms.getAltitude();
   kalmanvert.init(firstAlti,
@@ -331,9 +329,6 @@ void setup() {
                   POSITION_MEASURE_STANDARD_DEVIATION,
                   ACCELERATION_MEASURE_STANDARD_DEVIATION,
                   millis());
-  //delay(MS5611_CONV_DELAY); //not needed since mpu.init() takes >50 ms
-
-  mpu.init(); // load dmp and setup for normal use
 
   /* init history */
 #if defined(HAVE_GPS) || defined(VARIOMETER_DISPLAY_INTEGRATED_CLIMB_RATE)
@@ -350,19 +345,15 @@ void enableflightStartComponents(void);
 /*      LOOP      */
 /*----------------*/
 void loop() {
-  /*****************************/
-  /* compute vertical velocity */
-  /*****************************/
-  //new DMP packet ready
-  if (mpu.newDmp()) { // read interrupt status register
+
+  //new sensor data ready
+  if (newData) {
     ms.update();
     float alt = ms.getAltitude();
 
-    mpu.getFIFO(gyro, accel, quat);
     float vertAccel = mpu.getVertaccel(accel, quat);
 
-    if (!isnan(alt) && !isnan(vertAccel)) //filter out bad readings
-      kalmanvert.update(alt, vertAccel, millis());
+    kalmanvert.update(alt, vertAccel, millis());
 
     /* set beeper */
 #ifdef HAVE_SPEAKER
@@ -695,4 +686,11 @@ void enableflightStartComponents(void) {
 #if defined(HAVE_SDCARD) && defined(HAVE_GPS) && defined(VARIOMETER_RECORD_WHEN_FLIGHT_START)
   createSDCardTrackFile();
 #endif // defined(HAVE_SDCARD) && defined(VARIOMETER_RECORD_WHEN_FLIGHT_START)
+}
+
+void getSensors() {
+  ms.getMeasure();
+  ms.startMeasure();
+  mpu.getFIFO(gyro, accel, quat);
+  newData = true;
 }

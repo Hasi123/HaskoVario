@@ -2,34 +2,37 @@
 #include "ms5611.h"
 #include <I2CHelper.h>
 
-//constructor
-ms5611::ms5611(unsigned char Addr){
-  msAddr = Addr;
-}
+float ms5611::temperature;
+float ms5611::pressure;
+uint8_t volatile ms5611::msCurrentType = 0;
+//uint32_t volatile ms5611::msMeasure;
+uint32_t volatile ms5611::d1;
+uint32_t volatile ms5611::d2;
+float ms5611::msCoeffs[6] = {32768L, 65536L, 3.90625E-3, 7.8125E-3, 256, 1.1920928955E-7};
+//bool ms5611::msReady = 0;
 
 //issue command to start measurement
 void ms5611::startMeasure(void) {
-  static uint8_t counter = 0;
-  if (counter) { //get pressure
+  if (msCurrentType) { //get pressure
     I2C::sendCMD(msAddr, MS5611_CONV_D1);
-    msCurrentType = 1;
   }
   else { //get temperature
     I2C::sendCMD(msAddr, MS5611_CONV_D2);
-    msCurrentType = 0;
-    counter = MS5611_TEMP_EVERY;
+    msCurrentType = MS5611_TEMP_EVERY;
   }
-  counter--;
+  msCurrentType--;
 }
 
 //get measurement
 void ms5611::getMeasure(void) {
-  if (msCurrentType) { //get pressure
-    d1 = I2C::read24(msAddr, MS5611_ADC_READ);
-  }
-  else { //get temperature
+  //msMeasure = I2C::read24(msAddr, MS5611_ADC_READ);
+  if (msCurrentType == (MS5611_TEMP_EVERY - 1)) { //get temperature
     d2 = I2C::read24(msAddr, MS5611_ADC_READ);
   }
+  else { //get pressure
+    d1 = I2C::read24(msAddr, MS5611_ADC_READ);
+  }
+  //msReady = true;
 }
 
 void ms5611::init(void) {
@@ -43,18 +46,34 @@ void ms5611::init(void) {
     msCoeffs[reg] *= (uint16_t)I2C::readWord(msAddr, MS5611_READ_PROM + (reg * 2));
   }
 
-  /* get first data */
-  /*startMeasure(); //temp
-  delay(MS5611_CONV_DELAY);
-  getMeasure();
-  startMeasure(); //pressure
-  delay(MS5611_CONV_DELAY);*/
+  //setup timer 2 interrupt
+#ifdef MS5611_USE_TIMER
+  cli();
+  TCCR2A = 0b00000010; //CTC MODE
+  TCCR2B = 0b00000111; //1024 prescaler
+  TIMSK2 = 0b00000010; //enable CompA
+  TCNT2  = 0; //reset timer
+  OCR2A  = MS5611_INTERRUPT_COMPARE; //set compare register
+  sei();
+#endif
+}
+
+void ms5611::stopTimer(void) {
+TIMSK2 = 0;
 }
 
 void ms5611::update(void) {
-  getMeasure();
-  startMeasure();
+  //msReady = false;
   
+  /*
+  cli();
+  if (msCurrentType == (MS5611_TEMP_EVERY - 2)) //get temperature
+    d2 = msMeasure;
+  else //get pressure
+    d1 = msMeasure;
+  sei();
+  */
+
   // ALL MAGIC NUMBERS ARE FROM DATASHEET
   // TEMP & PRESS MATH - PAGE 7/20
   float dT = d2 - msCoeffs[4];
@@ -102,3 +121,15 @@ float ms5611::getPressure(void) {
 float ms5611::getTemperature(void) {
   return (temperature * 0.01);
 }
+/*
+bool ms5611::ready(void) {
+  return msReady;
+}
+*/
+//get and start measures
+#ifdef MS5611_USE_TIMER
+ISR (TIMER2_COMPA_vect) {
+  ms5611::getMeasure();
+  ms5611::startMeasure();
+}
+#endif

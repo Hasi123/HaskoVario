@@ -12,9 +12,9 @@ VarioPower varioPower;
 kalmanvert kalmanvert;
 beeper beeper;
 MPU6050 mpu;
-ms5611 ms;
 short newgyro[3], newaccel[3];
 long newquat[4];
+byte newData;
 
 
 void setup() {
@@ -29,33 +29,29 @@ void setup() {
   /**************************/
   I2C::begin();
 
-  //MPU6050 calibration
-  mpu.calibrate(); //run calibration if up side down
-
   //ms5611
   ms.init();
-  for (uint8_t i = 0; i < (MS5611_TEMP_EVERY + 1); i++) {
-    ms.getMeasure();
-    ms.startMeasure();
-    delay(MS5611_CONV_DELAY);
-  }
+
+  //MPU6050
+  mpu.calibrate(); //run calibration if up side down
+  mpu.init(); // load dmp and setup for normal use
+  attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING);
 
   //init kalman filter
+  delay(2000); //let alt stabilize
   ms.update();
   float firstAlti = ms.getAltitude();
+  Serial.println(firstAlti);
   kalmanvert.init(firstAlti,
                   0.0,
                   POSITION_MEASURE_STANDARD_DEVIATION,
                   ACCELERATION_MEASURE_STANDARD_DEVIATION,
                   millis());
-  //delay(MS5611_CONV_DELAY); //not needed since mpu.init() takes >50 ms
-
-  mpu.init(); // load dmp and setup for normal use
 }
 
 void loop() {
-  //new DMP packet ready
-  if (mpu.newDmp()) { // read interrupt status register
+  //new sensors ready
+  if (newData) { // read interrupt status register
     //static unsigned long lastTime;
     //unsigned long now = micros();
     //Serial.print(now - lastTime); Serial.print("\t");
@@ -67,15 +63,14 @@ void loop() {
     //Serial.print(alt); Serial.print("\t");
 
 
-    mpu.getFIFO(newgyro, newaccel, newquat);
     float vertAccel = mpu.getVertaccel(newaccel, newquat);
     //Serial.print(vertAccel, 5); Serial.print(" \t");
     //Serial.print(newaccel[0]); Serial.print("\t");
     //Serial.print(newaccel[1]); Serial.print("\t");
     //Serial.print(newaccel[2]); Serial.print("\t");
 
-    if (!isnan(alt) && !isnan(vertAccel))
-      kalmanvert.update(alt, vertAccel, millis());
+
+    kalmanvert.update(alt, vertAccel, millis());
     //Serial.print(kalmanvert.getVelocity()); Serial.print("\t");
 
 
@@ -85,15 +80,14 @@ void loop() {
     //Serial.println();
   }
 
-  /*
-    ms.compute();
-    float alt = ms.getAltitude();
-    ms.startMeasure();
-    Serial.println(alt);
-    delay(MS5611_CONV_DELAY);
-  */
-
   varioPower.update();
   beeper.update();
 
+}
+
+void getSensors() {
+  ms.getMeasure();
+  ms.startMeasure();
+  mpu.getFIFO(newgyro, newaccel, newquat);
+  newData = true;
 }

@@ -97,9 +97,8 @@ void VarioPower::sleep() {
 
 void VarioPower::init() {
   //disable watchdog to avoid WDT bootloop
-  //actually not needed since done in optiboot bootloader
-  //MCUSR = 0;
-  //wdt_disable();
+  MCUSR = 0;
+  wdt_disable();
 
   //setup pins and analog reference
   analogReference(INTERNAL);
@@ -128,7 +127,7 @@ void VarioPower::init() {
     goto *bootloader;
   }
   
-  //reset mcu after 1s on button push if code hangs somewhere
+  //reset mcu after 1 s on button push if code hangs somewhere
   attachInterrupt(digitalPinToInterrupt(INTPIN), reset, FALLING);
 }
 
