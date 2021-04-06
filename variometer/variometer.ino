@@ -54,6 +54,7 @@
 VarioPower varioPower;
 kalmanvert kalmanvert;
 MPU6050 mpu;
+byte newData;
 
 /*******************/
 /* General objects */
@@ -152,9 +153,6 @@ ScreenScheduler varioScreen(screen, displayList, sizeof(displayList) / sizeof(Sc
 /**********************/
 /* alti/vario objects */
 /**********************/
-short gyro[3], accel[3];
-long quat[4];
-byte newData;
 
 #ifdef HAVE_SPEAKER
 beeper beeper(VARIOMETER_SINKING_THRESHOLD, VARIOMETER_CLIMBING_THRESHOLD, VARIOMETER_NEAR_CLIMBING_SENSITIVITY, VARIOMETER_BEEP_VOLUME);
@@ -259,13 +257,7 @@ unsigned long lastVarioSentenceTimestamp = 0;
 /*-----------------*/
 void setup() {
   //init varioPower
-  varioPower.init();
-
-  /*****************************/
-  /* wait for devices power on */
-  /*****************************/
-  //delay(VARIOMETER_POWER_ON_DELAY);  //not needed anymore becuase of bootsound
-
+  varioPower.init1();
 
   /************/
   /* init SPI */
@@ -320,8 +312,11 @@ void setup() {
   mpu.init(); // load dmp and setup for normal use
   attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING);
 
+  //play sound and check if need to update
+  marioSounds.bootUp();
+  varioPower.init2();
+
   //init kalman filter
-  delay(2000); //let alt stabilize
   ms.update();
   float firstAlti = ms.getAltitude();
   kalmanvert.init(firstAlti,
@@ -351,7 +346,7 @@ void loop() {
     ms.update();
     float alt = ms.getAltitude();
 
-    float vertAccel = mpu.getVertaccel(accel, quat);
+    float vertAccel = mpu.getVertaccel();
 
     kalmanvert.update(alt, vertAccel, millis());
 
@@ -691,6 +686,6 @@ void enableflightStartComponents(void) {
 void getSensors() {
   ms.getMeasure();
   ms.startMeasure();
-  mpu.getFIFO(gyro, accel, quat);
+  mpu.getFIFO();
   newData = true;
 }

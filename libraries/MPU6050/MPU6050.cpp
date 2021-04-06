@@ -86,13 +86,12 @@ void MPU6050::calibrate(void) {
   delay(500); //gyro needs some time to stabilize
   while (!isResting(5000)); //wait for resting IMU
   const unsigned char loops = 200;
-  short newGyrOffs[3] = {0, 0, 0};
 
-  newGyrOffs[0] = -readWordAveraged(mpuAddr, MPU6050_RA_GYRO_XOUT_H, loops);
-  newGyrOffs[1] = -readWordAveraged(mpuAddr, MPU6050_RA_GYRO_YOUT_H, loops);
-  newGyrOffs[2] = -readWordAveraged(mpuAddr, MPU6050_RA_GYRO_ZOUT_H, loops);
+  gyroData[0] = -readWordAveraged(mpuAddr, MPU6050_RA_GYRO_XOUT_H, loops);
+  gyroData[1] = -readWordAveraged(mpuAddr, MPU6050_RA_GYRO_YOUT_H, loops);
+  gyroData[2] = -readWordAveraged(mpuAddr, MPU6050_RA_GYRO_ZOUT_H, loops);
 
-  EEPROM.put(0, newGyrOffs);
+  EEPROM.put(0, gyroData);
 
   ////////////////////
   //Accel calibration
@@ -105,7 +104,6 @@ void MPU6050::calibrate(void) {
 
   //if not moving get averaged (max) data of active axis (TODO maybe: if new data save the higher value, or better var?)
   short accelMax[6];
-  short accelData[3];
   unsigned char calibState = 0;
   unsigned char accIndex;
   while (true) {
@@ -269,7 +267,7 @@ void MPU6050::init(void) {
 
 //read 1 FIFO packet and parse data
 //should be called after interrupt or data_ready state
-char MPU6050::getFIFO(short *gyroData, short *accelData, long *quatData) {
+char MPU6050::getFIFO(void) {
 #define FIFO_SIZE 32
   unsigned char fifo_data[FIFO_SIZE];
   unsigned short fifo_count = I2C::readWord(mpuAddr, MPU6050_RA_FIFO_COUNTH);
@@ -311,7 +309,7 @@ bool MPU6050::newDmp() {
 }
 
 /* compute vertical vector and vertical accel from IMU data */
-double MPU6050::getVertaccel(short *imuAccel, long *imuQuat) {
+double MPU6050::getVertaccel(void) {
 
   /* G to ms convertion */
 #define VERTACCEL_G_TO_MS 9.80665
@@ -338,10 +336,10 @@ double MPU6050::getVertaccel(short *imuAccel, long *imuQuat) {
   double accel[3], quat[4], vertVector[3];
 
   for (unsigned char i = 0; i < 3; i++)
-    accel[i] = ((double)imuAccel[i]) / LIGHT_INVENSENSE_ACCEL_SCALE;
+    accel[i] = ((double)accelData[i]) / LIGHT_INVENSENSE_ACCEL_SCALE;
 
   for (unsigned char i = 0; i < 4; i++)
-    quat[i] = ((double)imuQuat[i]) / LIGHT_INVENSENSE_QUAT_SCALE;
+    quat[i] = ((double)quatData[i]) / LIGHT_INVENSENSE_QUAT_SCALE;
 
 
   /******************************/

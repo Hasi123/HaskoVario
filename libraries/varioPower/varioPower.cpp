@@ -95,7 +95,7 @@ void VarioPower::sleep() {
   while (1) {}
 }
 
-void VarioPower::init() {
+void VarioPower::init1() {
   //setup pins and analog reference
   analogReference(INTERNAL);
   //turn on pullup for button
@@ -107,15 +107,11 @@ void VarioPower::init() {
   
   beepStatus = 0;  //this needed?
   nextEvent = 0;
-
-  marioSounds.bootUp();
-
-  //if voltage too low goto sleep
-  //R1: 10M, R2: 3M
-  if (analogRead(A1) < 730) { //smaller 3.4V
-    this->sleep();
-  }
   
+  delay(100); //let devices power on
+}
+
+void VarioPower::init2() {
   //need to update?
   if (!(PIND & bit(INTPIN))) {
     cli();

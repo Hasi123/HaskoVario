@@ -392,9 +392,9 @@ class MPU6050 {
     MPU6050(unsigned char Addr = MPU6050_DEFAULT_ADDRESS);
     void calibrate(void);
     void init(void);
-    char getFIFO(short *gyro, short *accel, long *quat);
+    char getFIFO(void);
     bool newDmp(void);
-    double getVertaccel(short *imuAccel, long *imuQuat);
+    double getVertaccel(void);
 
   private:
     unsigned char mpuAddr;
@@ -404,6 +404,8 @@ class MPU6050 {
       unsigned char fineGain[3];
     };
     calibStruct calibData;
+    short gyroData[3], accelData[3];
+    long quatData[4];
     bool isResting(unsigned short threshold = 10000);
     short readWordAveraged(unsigned char devAddr, unsigned char regAddr, unsigned short loops);
     void load_calibration(short *gyro_offs, short *accel_offs, unsigned char *fine_gain);

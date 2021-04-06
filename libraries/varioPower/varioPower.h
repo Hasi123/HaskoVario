@@ -35,7 +35,8 @@ class VarioPower
 {
   public:
     void sleep();
-    void init();
+    void init1();
+	void init2();
     bool update();
   private:
 	uint8_t beepStatus;
