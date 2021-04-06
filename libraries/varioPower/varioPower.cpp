@@ -40,22 +40,22 @@ void VarioPower::sleep() {
 
   //disable interfaces to be able to reconfigure pins
   //disable TWI
-  TWCR &= ~(1 << TWEN);
+  TWCR &= ~bit(TWEN);
   //disable USART
   UCSR0B = 0;
   //disable SPI
-  SPCR &= ~(1 << SPE);
+  SPCR &= ~bit(SPE);
 
   //turn off LDO
-  PORTD &= ~(1 << PD5);
+  PORTD &= ~bit(PD5);
 
   //write all used pins to output low to completely eliminate any power drain
-  DDRB |= (1 << PB4) | (1 << PB5) | (1 << PB3) | (1 << PB0);
-  PORTB &= ~((1 << PB4) | (1 << PB5) | (1 << PB3) | (1 << PB0));
-  DDRC |= (1 << PC4) | (1 << PC5);
-  PORTC &= ~((1 << PC4) | (1 << PC5));
-  DDRD |= (1 << PD0) | (1 << PD1) | (1 << PD2);
-  PORTD &= ~((1 << PD0) | (1 << PD1) | (1 << PD2));
+  DDRB |= bit(PB4) | bit(PB5) | bit(PB3) | bit(PB0);
+  PORTB &= ~(bit(PB4) | bit(PB5) | bit(PB3) | bit(PB0));
+  DDRC |= bit(PC4) | bit(PC5);
+  PORTC &= ~(bit(PC4) | bit(PC5));
+  DDRD |= bit(PD0) | bit(PD1) | bit(PD2);
+  PORTD &= ~(bit(PD0) | bit(PD1) | bit(PD2));
 
   //play shutdown sound also eliminates needing to debounce
   marioSounds.shutDown();
@@ -68,7 +68,7 @@ void VarioPower::sleep() {
   sleep_enable();
 
   //enable external interrupt to wake CPU
-  EIFR = 3;  // clear flag for interrupts (shouldn't be needed)
+  EIFR = 3;  //clear flag for interrupts
   attachInterrupt(digitalPinToInterrupt(INTPIN), wakeUp, LOW);  //only LOW level interrupt is allowed to wake from sleep
 
   //turn off brown-out enable in software, will be automatically reenabled after wake
@@ -96,17 +96,14 @@ void VarioPower::sleep() {
 }
 
 void VarioPower::init() {
-  //disable watchdog to avoid WDT bootloop
-  MCUSR = 0;
-  wdt_disable();
-
   //setup pins and analog reference
   analogReference(INTERNAL);
-  pinMode(INTPIN, INPUT_PULLUP);
+  //turn on pullup for button
+  PORTD |= bit(INTPIN);
   
   //trun on LDO
-  DDRD |= (1 << PD5);
-  PORTD |= (1 << PD5);
+  DDRD |= bit(PD5);
+  PORTD |= bit(PD5);
   
   beepStatus = 0;  //this needed?
   nextEvent = 0;
@@ -120,7 +117,7 @@ void VarioPower::init() {
   }
   
   //need to update?
-  if (!(PIND & (1 << INTPIN))) {
+  if (!(PIND & bit(INTPIN))) {
     cli();
     SP = RAMEND;
     void* bootloader = (void*)0x7800;
@@ -128,11 +125,12 @@ void VarioPower::init() {
   }
   
   //reset mcu after 1 s on button push if code hangs somewhere
+  EIFR = 3;  //clear flag for interrupts
   attachInterrupt(digitalPinToInterrupt(INTPIN), reset, FALLING);
 }
 
 bool VarioPower::update() {
-  if (!(PIND & (1 << INTPIN))) {
+  if (!(PIND & bit(INTPIN))) {
     this->sleep();
   }
 
