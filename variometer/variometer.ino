@@ -257,7 +257,7 @@ unsigned long lastVarioSentenceTimestamp = 0;
 /*-----------------*/
 void setup() {
   //init varioPower
-  varioPower.init1();
+  varioPower.init();
 
   /************/
   /* init SPI */
@@ -314,7 +314,7 @@ void setup() {
 
   //play sound and check if need to update
   marioSounds.bootUp();
-  varioPower.init2();
+  varioPower.updateFW();
 
   //init kalman filter
   ms.update();

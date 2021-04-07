@@ -12,8 +12,6 @@ VarioPower varioPower;
 kalmanvert kalmanvert;
 beeper beeper;
 MPU6050 mpu;
-short newgyro[3], newaccel[3];
-long newquat[4];
 byte newData;
 
 
@@ -37,8 +35,11 @@ void setup() {
   mpu.init(); // load dmp and setup for normal use
   attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING);
 
+  //play sound and check if need to update
+  marioSounds.bootUp();
+  varioPower.updateFW();
+
   //init kalman filter
-  delay(2000); //let alt stabilize
   ms.update();
   float firstAlti = ms.getAltitude();
   Serial.println(firstAlti);
@@ -63,7 +64,7 @@ void loop() {
     //Serial.print(alt); Serial.print("\t");
 
 
-    float vertAccel = mpu.getVertaccel(newaccel, newquat);
+    float vertAccel = mpu.getVertaccel();
     //Serial.print(vertAccel, 5); Serial.print(" \t");
     //Serial.print(newaccel[0]); Serial.print("\t");
     //Serial.print(newaccel[1]); Serial.print("\t");
@@ -88,6 +89,6 @@ void loop() {
 void getSensors() {
   ms.getMeasure();
   ms.startMeasure();
-  mpu.getFIFO(newgyro, newaccel, newquat);
+  mpu.getFIFO();
   newData = true;
 }

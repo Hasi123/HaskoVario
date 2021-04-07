@@ -30,7 +30,9 @@ void wakeUp() {
   noInterrupts();
 }
 void reset() {
-  wdt_enable(WDTO_1S);
+  delayMicroseconds(2000); //debounce
+  if (!(PIND & bit(INTPIN)))
+    wdt_enable(WDTO_250MS);
 }
 
 void VarioPower::sleep() {
@@ -95,7 +97,7 @@ void VarioPower::sleep() {
   while (1) {}
 }
 
-void VarioPower::init1() {
+void VarioPower::init() {
   //setup pins and analog reference
   analogReference(INTERNAL);
   //turn on pullup for button
@@ -108,10 +110,14 @@ void VarioPower::init1() {
   beepStatus = 0;  //this needed?
   nextEvent = 0;
   
-  delay(100); //let devices power on
+  //reset mcu after 1 s on button push if code hangs somewhere
+  EIFR = 3;  //clear flag for interrupts
+  attachInterrupt(digitalPinToInterrupt(INTPIN), reset, FALLING);
+  
+  delay(200); //let devices power on
 }
 
-void VarioPower::init2() {
+void VarioPower::updateFW() {
   //need to update?
   if (!(PIND & bit(INTPIN))) {
     cli();
@@ -119,10 +125,6 @@ void VarioPower::init2() {
     void* bootloader = (void*)0x7800;
     goto *bootloader;
   }
-  
-  //reset mcu after 1 s on button push if code hangs somewhere
-  EIFR = 3;  //clear flag for interrupts
-  attachInterrupt(digitalPinToInterrupt(INTPIN), reset, FALLING);
 }
 
 bool VarioPower::update() {
