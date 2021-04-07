@@ -19,22 +19,22 @@
  */
 
 #include <Arduino.h>
-#include <beeper.h>
+#include "beeper.h"
+#include <VarioSettings.h>
 #include <toneAC.h>
 
-beeper::beeper(double sinkingThreshold, double climbingThreshold, double nearClimbingSensitivity, uint8_t baseVolume) {
+double beeper::beepSinkingThreshold = VARIOMETER_SINKING_THRESHOLD;
+double beeper::beepGlidingThreshold = (VARIOMETER_CLIMBING_THRESHOLD - VARIOMETER_NEAR_CLIMBING_SENSITIVITY);
+double beeper::beepClimbingThreshold = VARIOMETER_CLIMBING_THRESHOLD;
+uint8_t beeper::volume = VARIOMETER_BEEP_VOLUME;
+unsigned long beeper::beepStartTime;
+double beeper::beepVelocity;
+double beeper::beepFreq;
+double beeper::beepPaternBasePosition;
+double beeper::beepPaternPosition;
+uint8_t beeper::beepState;
+uint8_t beeper::beepType = BEEP_TYPE_SILENT;
 
-  /* save volume */
-  volume = baseVolume;
-  
-  /* set threshold */
-  setThresholds(sinkingThreshold, climbingThreshold, nearClimbingSensitivity);
-  
-  /* init private vars */
-  beepStartTime = 0;
-  beepState = 0;
-  beepType = BEEP_TYPE_SILENT;
-}
 
 void beeper::setThresholds(double sinkingThreshold, double climbingThreshold, double nearClimbingSensitivity) {
 
@@ -44,7 +44,7 @@ void beeper::setThresholds(double sinkingThreshold, double climbingThreshold, do
 }
 
 void beeper::setVolume(uint8_t newVolume) {
-
+  if (newVolume == 0) { noToneAC(); }
   volume = newVolume;
 }
 
@@ -297,7 +297,7 @@ void beeper::setTone() {
 	  toneAC(CLIMBING_ALARM_FREQ, volume);
 	}
       } else {
-	toneAC(0.0);
+	toneAC(0, volume);
 	bst_unset(BEEP_HIGH);
       }
     }
@@ -327,7 +327,7 @@ void beeper::setTone() {
     /* silent */
     /**********/
     else if( beepType == BEEP_TYPE_SILENT ) {
-      toneAC(0.0);
+      toneAC(0, volume);
       bst_unset(BEEP_HIGH);
     }
 
@@ -344,11 +344,11 @@ void beeper::setTone() {
 	    toneAC(beepFreq, volume);
 	  }
 	} else {
-	  toneAC(0.0);
+	  toneAC(0, volume);
 	  bst_unset(BEEP_HIGH);
 	}
       } else {
-	toneAC(0.0);
+	toneAC(0, volume);
 	bst_unset(BEEP_HIGH);
       }
     }
@@ -365,7 +365,7 @@ void beeper::setTone() {
 	  toneAC(beepFreq, volume);
 	}
       } else {
-	toneAC(0.0);
+	toneAC(0, volume);
 	bst_unset(BEEP_HIGH);
       }
     }
@@ -381,5 +381,4 @@ void beeper::setTone() {
 void beeper::update() {
   setBeepPaternPosition(beepVelocity);
   setTone();
-  
 }

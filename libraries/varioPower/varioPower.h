@@ -34,10 +34,10 @@
 class VarioPower
 {
   public:
-    void sleep();
-    void init();
-	void updateFW();
-    bool update();
+    void sleep(void);
+    void init(void);
+	void updateFW(void);
+    void update(void);
   private:
 	uint8_t beepStatus;
     uint32_t nextEvent;

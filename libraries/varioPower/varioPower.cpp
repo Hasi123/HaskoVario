@@ -23,6 +23,7 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <marioSounds.h>
+#include <beeper.h>
 
 //ISRs can´t be part of the class
 void wakeUp() {
@@ -35,7 +36,7 @@ void reset() {
     wdt_enable(WDTO_250MS);
 }
 
-void VarioPower::sleep() {
+void VarioPower::sleep(void) {
   //disable reset watchdog
   detachInterrupt(digitalPinToInterrupt(INTPIN));
   wdt_disable();
@@ -97,7 +98,7 @@ void VarioPower::sleep() {
   while (1) {}
 }
 
-void VarioPower::init() {
+void VarioPower::init(void) {
   //setup pins and analog reference
   analogReference(INTERNAL);
   //turn on pullup for button
@@ -107,9 +108,6 @@ void VarioPower::init() {
   DDRD |= bit(PD5);
   PORTD |= bit(PD5);
   
-  beepStatus = 0;  //this needed?
-  nextEvent = 0;
-  
   //reset mcu after 1 s on button push if code hangs somewhere
   EIFR = 3;  //clear flag for interrupts
   attachInterrupt(digitalPinToInterrupt(INTPIN), reset, FALLING);
@@ -117,7 +115,7 @@ void VarioPower::init() {
   delay(200); //let devices power on
 }
 
-void VarioPower::updateFW() {
+void VarioPower::updateFW(void) {
   //need to update?
   if (!(PIND & bit(INTPIN))) {
     cli();
@@ -127,41 +125,34 @@ void VarioPower::updateFW() {
   }
 }
 
-bool VarioPower::update() {
+void VarioPower::update(void) {
+  //check button pin
   if (!(PIND & bit(INTPIN))) {
     this->sleep();
   }
 
-  uint16_t volts = analogRead(A1);
-  if (volts < 740) { //3.45V
-    if (volts < 708) {
-      this->sleep();  //3.3V
-    }
-    else {
-      if (nextEvent <= millis()) {
-        uint16_t nextAdd;
+  //check voltage at lower frequency
+  if (nextEvent <= millis()) {
+    uint16_t volts = analogRead(A1);
+    uint16_t nextAdd = 10000;
+
+    if (volts < 740) { //3.45V
+      if (volts < 708) {
+        this->sleep();  //3.3V
+      }
+      if (beepStatus < 3) {
+        if (beepStatus == 0) {
+          beeper::setVolume(0);
+        }
+        marioSounds.lowVoltage();
+        nextAdd = 200;
         beepStatus++;
-
-        if (beepStatus < 4) {
-          marioSounds.lowVoltage();
-          nextAdd = 200;
-        }
-        else {
-          nextAdd = 60000;
-          beepStatus = 0;
-        }
-
-        nextEvent += nextAdd;
-
+      }
+      else {
+        beeper::setVolume(10);
+        beepStatus = 0;
       }
     }
+    nextEvent = millis() + nextAdd;
   }
-  else {
-    beepStatus = 0;
-  }
-  
-  if (beepStatus > 0 && beepStatus < 4) {
-    return false;
-  }
-  return true;
 }

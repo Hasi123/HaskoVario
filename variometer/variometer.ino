@@ -150,13 +150,6 @@ ScreenScheduler varioScreen(screen, displayList, sizeof(displayList) / sizeof(Sc
 
 #endif //HAVE_SCREEN
 
-/**********************/
-/* alti/vario objects */
-/**********************/
-
-#ifdef HAVE_SPEAKER
-beeper beeper(VARIOMETER_SINKING_THRESHOLD, VARIOMETER_CLIMBING_THRESHOLD, VARIOMETER_NEAR_CLIMBING_SENSITIVITY, VARIOMETER_BEEP_VOLUME);
-#endif
 
 /************************************/
 /* glide ratio / average climb rate */
@@ -378,15 +371,17 @@ void loop() {
 #endif //VARIOMETER_DISPLAY_INTEGRATED_CLIMB_RATE
 #endif //HAVE_SCREEN
 
+  /*********************/
+  /* update varioPower */
+  /*********************/
+  varioPower.update();
 
   /*****************/
   /* update beeper */
   /*****************/
-  if (varioPower.update()) {
 #ifdef HAVE_SPEAKER
-    beeper.update();
+  beeper.update();
 #endif //HAVE_SPEAKER
-  }
 
   /********************/
   /* update bluetooth */
