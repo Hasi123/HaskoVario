@@ -10,7 +10,6 @@
 
 VarioPower varioPower;
 kalmanvert kalmanvert;
-beeper beeper;
 MPU6050 mpu;
 byte newData;
 
@@ -76,13 +75,13 @@ void loop() {
 
 
     // set beeper
-    beeper.setVelocity(kalmanvert.getVelocity());
+    beeper::setVelocity(kalmanvert.getVelocity());
 
     //Serial.println();
   }
 
   varioPower.update();
-  beeper.update();
+  beeper::update();
 
 }
 

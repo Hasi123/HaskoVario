@@ -6,8 +6,6 @@
 kalmanvert kalmanvert;
 MPU6050 mpu;
 
-short gyro[3], accel[3];
-long quat[4];
 byte newData;
 
 void setup() {
@@ -43,7 +41,7 @@ void loop() {
     newData = false;
     ms.update();
     float alt = ms.getAltitude();
-    float vertAccel = mpu.getVertaccel(accel, quat);
+    float vertAccel = mpu.getVertaccel();
     kalmanvert.update(alt, vertAccel, millis());
 
     Serial.print(alt, 5); Serial.print("\t");
@@ -55,6 +53,6 @@ void loop() {
 void getSensors() {
   ms.getMeasure();
   ms.startMeasure();
-  mpu.getFIFO(gyro, accel, quat);
+  mpu.getFIFO();
   newData = true;
 }
