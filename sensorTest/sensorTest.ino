@@ -19,12 +19,14 @@ void setup() {
   ms.init();
 
   //MPU6050
-  mpu.calibrate(); //run calibration if up side down
   mpu.init(); // load dmp and setup for normal use
   attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING);
 
-  //init kalman filter
   delay(2000); //let alt stabilize
+  if (mpu.calibrate()) //run calibration if up side down
+    setup();
+
+  //init kalman filter
   ms.update();
   float firstAlti = ms.getAltitude();
   Serial.println(firstAlti);

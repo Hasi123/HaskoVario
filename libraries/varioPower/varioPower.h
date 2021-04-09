@@ -34,6 +34,7 @@
 class VarioPower
 {
   public:
+    void reset(void);
     void sleep(void);
     void init(void);
 	void updateFW(void);

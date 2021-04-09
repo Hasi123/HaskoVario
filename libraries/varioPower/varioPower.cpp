@@ -30,10 +30,18 @@ void wakeUp() {
   //disable interrupts to avoid interrupt bootloop
   noInterrupts();
 }
-void reset() {
+void buttonAction() {
   delayMicroseconds(2000); //debounce
   if (!(PIND & bit(INTPIN)))
     wdt_enable(WDTO_250MS);
+}
+
+void VarioPower::reset(void) {
+  //reset atmega
+  //asm volatile (" jmp 0");  //restart code from beginning
+  //reset by watchdog is recommended by the datasheet and is probably better
+  wdt_enable(WDTO_15MS);
+  while (1);
 }
 
 void VarioPower::sleep(void) {
@@ -91,11 +99,7 @@ void VarioPower::sleep(void) {
   
   sleep_disable();
 
-  //reset atmega
-  //asm volatile (" jmp 0");  //restart code from beginning
-  //reset by watchdog is recommended by the datasheet and is probably better
-  wdt_enable(WDTO_15MS);
-  while (1) {}
+  reset();
 }
 
 void VarioPower::init(void) {
@@ -110,7 +114,7 @@ void VarioPower::init(void) {
   
   //reset mcu after 1 s on button push if code hangs somewhere
   EIFR = 3;  //clear flag for interrupts
-  attachInterrupt(digitalPinToInterrupt(INTPIN), reset, FALLING);
+  attachInterrupt(digitalPinToInterrupt(INTPIN), buttonAction, FALLING);
   
   delay(200); //let devices power on
 }

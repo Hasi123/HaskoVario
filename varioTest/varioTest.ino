@@ -30,13 +30,14 @@ void setup() {
   ms.init();
 
   //MPU6050
-  mpu.calibrate(); //run calibration if up side down
   mpu.init(); // load dmp and setup for normal use
   attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING);
 
   //play sound and check if need to update
   marioSounds.bootUp();
   varioPower.updateFW();
+  if (mpu.calibrate()) //run calibration if up side down
+    varioPower.reset(); //reset to load calibration data and dmp again
 
   //init kalman filter
   ms.update();

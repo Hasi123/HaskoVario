@@ -4,6 +4,9 @@
 #include "inv_dmp_uncompress.h"
 #include <EEPROM.h>
 #include <toneAC.h>
+#include "variance.h"
+
+variance var;
 
 //constructor
 MPU6050::MPU6050(unsigned char Addr) {
@@ -13,48 +16,51 @@ MPU6050::MPU6050(unsigned char Addr) {
 //check if mpu is not being moved
 //based on variance of gyro values
 bool MPU6050::isResting(unsigned short threshold) {
-  unsigned long sum[3] = {0, 0, 0};
-  unsigned long sqsum[3] = {0, 0, 0};
-  unsigned long var[3];  //variance
-  //unsigned long sd[3]; //standard deviation
-  short reading;
   const unsigned short dataPoints = 250;
+  short reading[3];
+  
+  var.reset();
   I2C::readByte(mpuAddr, MPU6050_RA_INT_STATUS); //clear int status
   for (unsigned short i = 0; i < dataPoints; i++) {
     while (!I2C::readByte(mpuAddr, MPU6050_RA_INT_STATUS)); //wait for new reading
     for (unsigned char ii = 0; ii < 3; ii++) { //get all axis
-      reading = I2C::readWord(mpuAddr, MPU6050_RA_GYRO_XOUT_H + (2 * ii));
-      sum[ii] += reading;
-      sqsum[ii] += reading * reading;
+      reading[ii] = I2C::readWord(mpuAddr, MPU6050_RA_GYRO_XOUT_H + (2 * ii));
     }
+	var.update(reading);
   }
-  for (unsigned char ii = 0; ii < 3; ii++) {
-    var[ii] = sqsum[ii] - (sum[ii] * sum[ii] / dataPoints);
-    //sd[ii] = sqrt(var[ii]);
-  }
-  if (var[0] + var[1] + var[2] < threshold)
-    return true;
-  else
-    return false;
+
+  return var.getSum() < threshold;
 }
 
 //reads word "loops" times and averages the result
-short MPU6050::readWordAveraged(unsigned char devAddr, unsigned char regAddr, unsigned short loops) {
+short MPU6050::readWordAveraged(unsigned char regAddr, unsigned short loops) {
   long sum = 0;
   I2C::readByte(mpuAddr, MPU6050_RA_INT_STATUS); //clear int status
   for (unsigned short i = 0; i < loops; i++) {
     while (!bitRead(I2C::readByte(mpuAddr, MPU6050_RA_INT_STATUS), MPU6050_INTERRUPT_DATA_RDY_BIT)); //wait for new reading
-    sum += I2C::readWord(devAddr, regAddr);
+    sum += I2C::readWord(mpuAddr, regAddr);
   }
   return (short)(sum / loops);
 }
 
 //calibrate mpu if initially up side down
-void MPU6050::calibrate(void) {
-  ////////////
-  //init mpu//
-  ////////////
-  I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, 0b10000000); //reset
+bool MPU6050::calibrate(void) {
+	
+  //check if up side down (allow for calibration error) and if stationary
+  var.reset();
+  for (unsigned char i = 0; i < 50; i++) { //over half second
+    while (!newData); //wait for new reading
+    newData = false;
+    var.update(gyroData);
+  }
+  bool moving = var.getSum() > 200;
+
+  if ((accelData[2] > -7000) || moving) {
+    return false;
+  }
+
+  //setup for calibration
+  I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, bit(MPU6050_PWR1_DEVICE_RESET_BIT)); //reset
   delay(100);
   I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_CLOCK_PLL_ZGYRO); //ClockSource to X gyro
   I2C::writeByte(mpuAddr, MPU6050_RA_CONFIG, MPU6050_DLPF_BW_42); //DLPF
@@ -62,11 +68,6 @@ void MPU6050::calibrate(void) {
   I2C::writeByte(mpuAddr, MPU6050_RA_ACCEL_CONFIG, MPU6050_ACCEL_FS_16 << 3); //Accel range
   //calibration units are in 1000 gyro and 16 accel range
   delay(50);
-
-  short getZ = readWordAveraged(mpuAddr, MPU6050_RA_ACCEL_ZOUT_H, 200);
-  if ((getZ > -1750) || !isResting()) { //check if up side down (allow for calibration error) and if stationary
-    return;
-  }
 
   short origAccOffs[3];
   unsigned char origGain[3]; //[7:4] accel gain, [3:0] gyro gain
@@ -83,15 +84,29 @@ void MPU6050::calibrate(void) {
   //////////////////
   //gyro calibration
   //////////////////
-  delay(500); //gyro needs some time to stabilize
-  while (!isResting(5000)); //wait for resting IMU
-  const unsigned char loops = 200;
+  const unsigned short loops = 200;
+  short reading[3];
+  long sum[3];
+  do {
+    sum[0] = 0;
+	sum[1] = 0;
+	sum[2] = 0;
+    var.reset();
 
-  gyroData[0] = -readWordAveraged(mpuAddr, MPU6050_RA_GYRO_XOUT_H, loops);
-  gyroData[1] = -readWordAveraged(mpuAddr, MPU6050_RA_GYRO_YOUT_H, loops);
-  gyroData[2] = -readWordAveraged(mpuAddr, MPU6050_RA_GYRO_ZOUT_H, loops);
+    I2C::readByte(mpuAddr, MPU6050_RA_INT_STATUS); //clear int status
+    for (unsigned short i = 0; i < loops; i++) {
+      while (!I2C::readByte(mpuAddr, MPU6050_RA_INT_STATUS)); //wait for new reading
+      for (unsigned char ii = 0; ii < 3; ii++) { //get all axis
+        reading[ii] = I2C::readWord(mpuAddr, MPU6050_RA_GYRO_XOUT_H + (2 * ii));
+        sum[ii] += reading[ii];
+      }
+      var.update(reading);
+    }
+  } while (var.getSum() > 1500); //only save if variance low
 
-  EEPROM.put(0, gyroData);
+  gyroData[0] = -sum[0]/loops;
+  gyroData[1] = -sum[1]/loops;
+  gyroData[2] = -sum[2]/loops;
 
   ////////////////////
   //Accel calibration
@@ -108,9 +123,9 @@ void MPU6050::calibrate(void) {
   unsigned char accIndex;
   while (true) {
     if (isResting()) {
-      accelData[0] = readWordAveraged(mpuAddr, MPU6050_RA_ACCEL_XOUT_H, 50);
-      accelData[1] = readWordAveraged(mpuAddr, MPU6050_RA_ACCEL_YOUT_H, 50);
-      accelData[2] = readWordAveraged(mpuAddr, MPU6050_RA_ACCEL_ZOUT_H, 50);
+      accelData[0] = readWordAveraged(MPU6050_RA_ACCEL_XOUT_H, 50);
+      accelData[1] = readWordAveraged(MPU6050_RA_ACCEL_YOUT_H, 50);
+      accelData[2] = readWordAveraged(MPU6050_RA_ACCEL_ZOUT_H, 50);
 
       for (unsigned char i = 0; i < 3; i++) {
         accIndex = i * 2;
@@ -149,8 +164,6 @@ void MPU6050::calibrate(void) {
         newAccOffs[i] = origAccOffs[i] - newAccOffs[i];
       }
 
-      EEPROM.put(6, newAccOffs);
-
       I2C::writeBits(mpuAddr, MPU6050_RA_X_FINE_GAIN, 7, 4, newAccScal[0]);
       I2C::writeBits(mpuAddr, MPU6050_RA_Y_FINE_GAIN, 7, 4, newAccScal[1]);
       I2C::writeBits(mpuAddr, MPU6050_RA_Z_FINE_GAIN, 7, 4, newAccScal[2]);
@@ -159,9 +172,12 @@ void MPU6050::calibrate(void) {
       newAccScal[1] = I2C::readByte(mpuAddr, MPU6050_RA_Y_FINE_GAIN);
       newAccScal[2] = I2C::readByte(mpuAddr, MPU6050_RA_Z_FINE_GAIN);
 
+      //save values into EEPROM
+      EEPROM.put(0, gyroData);
+      EEPROM.put(6, newAccOffs);
       EEPROM.put(12, newAccScal);
 
-      break;
+      return true;
     } //calculate calibration values
   } //while(1)
 }
@@ -233,11 +249,8 @@ char MPU6050::load_dmp() {  //using compressed DMP firmware
 
 //Init the sensor, load calibration data and dmp
 void MPU6050::init(void) {
-  //#define RESET_MPU //not needed after mpuCalibrate is called
-#ifdef RESET_MPU
   I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, bit(MPU6050_PWR1_DEVICE_RESET_BIT)); //reset
   delay(100);
-#endif
   I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_CLOCK_PLL_XGYRO); //wake up and set clock to gyro X (recomended by datasheet)
   I2C::writeByte(mpuAddr, MPU6050_RA_GYRO_CONFIG, MPU6050_GYRO_FS_2000 << 3); //Gyro range
   I2C::writeByte(mpuAddr, MPU6050_RA_ACCEL_CONFIG, MPU6050_ACCEL_FS << 3); //Accel range
@@ -250,8 +263,9 @@ void MPU6050::init(void) {
 
   //load calibration data from EEPROM
   EEPROM.get(0, calibData);
-  //TODO maybe: cheack if values are plausible
-  load_calibration(calibData.gyrOffs, calibData.accOffs, calibData.fineGain);
+  //check if values are plausible on gyro X
+  if (calibData.gyrOffs[0] != -32768 && calibData.gyrOffs[0] != 32767)
+    load_calibration(calibData.gyrOffs, calibData.accOffs, calibData.fineGain);
 
   load_dmp();
 
