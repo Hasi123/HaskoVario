@@ -148,7 +148,7 @@ bool MPU6050::calibrate(void) {
     //if all axes have data point -> calculate values -> write to registers and print
     if (calibState == 0b111111) {
       short newAccOffs[3];
-      char newAccScal[3];
+      char newGain[3];
 
       for (unsigned char i = 0; i < 3; i++) {
         //Offsets
@@ -157,27 +157,21 @@ bool MPU6050::calibrate(void) {
         //Scaling
         short diff = 2048 - (accelMax[i * 2] - newAccOffs[i]); //need to calculate offset compansated values
         if (diff >= 0) //round positive values
-          newAccScal[i] = diff + 14;
+          newGain[i] = diff + 14;
         else //round negative values
-          newAccScal[i] = diff - 14;
-        newAccScal[i] /= 29; //strange value found by experimentation
+          newGain[i] = diff - 14;
+        newGain[i] /= 29; //strange value found by experimentation
+		
+        newGain[i] = (newGain[i] << 4) & (origGain[i] & 0b00001111); //combine new acc gain wit factory gyro gain
 
         //final offstes
         newAccOffs[i] = origAccOffs[i] - newAccOffs[i];
       }
 
-      I2C::writeBits(mpuAddr, MPU6050_RA_X_FINE_GAIN, 7, 4, newAccScal[0]);
-      I2C::writeBits(mpuAddr, MPU6050_RA_Y_FINE_GAIN, 7, 4, newAccScal[1]);
-      I2C::writeBits(mpuAddr, MPU6050_RA_Z_FINE_GAIN, 7, 4, newAccScal[2]);
-
-      newAccScal[0] = I2C::readByte(mpuAddr, MPU6050_RA_X_FINE_GAIN);
-      newAccScal[1] = I2C::readByte(mpuAddr, MPU6050_RA_Y_FINE_GAIN);
-      newAccScal[2] = I2C::readByte(mpuAddr, MPU6050_RA_Z_FINE_GAIN);
-
       //save values into EEPROM
       EEPROM.put(0, gyroData);
       EEPROM.put(6, newAccOffs);
-      EEPROM.put(12, newAccScal);
+      EEPROM.put(12, newGain);
 
       return true;
     } //calculate calibration values
