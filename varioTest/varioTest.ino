@@ -11,7 +11,6 @@
 VarioPower varioPower;
 kalmanvert kalmanvert;
 MPU6050 mpu;
-byte newData;
 
 
 void setup() {
@@ -52,7 +51,8 @@ void setup() {
 
 void loop() {
   //new sensors ready
-  if (newData) { // read interrupt status register
+  if (mpu.newData) { // read interrupt status register
+    mpu.newData = false;
     //static unsigned long lastTime;
     //unsigned long now = micros();
     //Serial.print(now - lastTime); Serial.print("\t");
@@ -90,5 +90,5 @@ void getSensors() {
   ms.getMeasure();
   ms.startMeasure();
   mpu.getFIFO();
-  newData = true;
+  mpu.newData = true;
 }

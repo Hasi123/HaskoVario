@@ -32,7 +32,7 @@ void wakeUp() {
 }
 void buttonAction() {
   delayMicroseconds(2000); //debounce
-  if (!(PIND & bit(INTPIN)))
+  if (!(PIND & bit(BUTTONPIN)))
     wdt_enable(WDTO_250MS);
 }
 
@@ -46,7 +46,7 @@ void VarioPower::reset(void) {
 
 void VarioPower::sleep(void) {
   //disable reset watchdog
-  detachInterrupt(digitalPinToInterrupt(INTPIN));
+  detachInterrupt(digitalPinToInterrupt(BUTTONPIN));
   wdt_disable();
 
   //disable interfaces to be able to reconfigure pins
@@ -80,7 +80,7 @@ void VarioPower::sleep(void) {
 
   //enable external interrupt to wake CPU
   EIFR = 3;  //clear flag for interrupts
-  attachInterrupt(digitalPinToInterrupt(INTPIN), wakeUp, LOW);  //only LOW level interrupt is allowed to wake from sleep
+  attachInterrupt(digitalPinToInterrupt(BUTTONPIN), wakeUp, LOW);  //only LOW level interrupt is allowed to wake from sleep
 
   //turn off brown-out enable in software, will be automatically reenabled after wake
   sleep_bod_disable();
@@ -106,7 +106,7 @@ void VarioPower::init(void) {
   //setup pins and analog reference
   analogReference(INTERNAL);
   //turn on pullup for button
-  PORTD |= bit(INTPIN);
+  PORTD |= bit(BUTTONPIN);
   
   //trun on LDO
   DDRD |= bit(PD5);
@@ -114,14 +114,14 @@ void VarioPower::init(void) {
   
   //reset mcu after 1 s on button push if code hangs somewhere
   EIFR = 3;  //clear flag for interrupts
-  attachInterrupt(digitalPinToInterrupt(INTPIN), buttonAction, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BUTTONPIN), buttonAction, FALLING);
   
   delay(200); //let devices power on
 }
 
 void VarioPower::updateFW(void) {
   //need to update?
-  if (!(PIND & bit(INTPIN))) {
+  if (!(PIND & bit(BUTTONPIN))) {
     cli();
     SP = RAMEND;
     void* bootloader = (void*)0x7800;
@@ -131,7 +131,7 @@ void VarioPower::updateFW(void) {
 
 void VarioPower::update(void) {
   //check button pin
-  if (!(PIND & bit(INTPIN))) {
+  if (!(PIND & bit(BUTTONPIN))) {
     this->sleep();
   }
 

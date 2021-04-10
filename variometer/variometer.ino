@@ -54,7 +54,6 @@
 VarioPower varioPower;
 kalmanvert kalmanvert;
 MPU6050 mpu;
-byte newData;
 
 /*******************/
 /* General objects */
@@ -336,7 +335,9 @@ void enableflightStartComponents(void);
 void loop() {
 
   //new sensor data ready
-  if (newData) {
+  if (mpu.newData) {
+    mpu.newData = false;
+    
     ms.update();
     float alt = ms.getAltitude();
 
@@ -683,5 +684,5 @@ void getSensors() {
   ms.getMeasure();
   ms.startMeasure();
   mpu.getFIFO();
-  newData = true;
+  mpu.newData = true;
 }

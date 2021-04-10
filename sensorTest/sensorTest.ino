@@ -6,8 +6,6 @@
 kalmanvert kalmanvert;
 MPU6050 mpu;
 
-byte newData;
-
 void setup() {
   Serial.begin(57600);
   while (!Serial); // wait for Leonardo enumeration, others continue immediately
@@ -39,8 +37,8 @@ void setup() {
 
 void loop() {
 
-  if (newData) {
-    newData = false;
+  if (mpu.newData) {
+    mpu.newData = false;
     ms.update();
     float alt = ms.getAltitude();
     float vertAccel = mpu.getVertaccel();
@@ -56,5 +54,5 @@ void getSensors() {
   ms.getMeasure();
   ms.startMeasure();
   mpu.getFIFO();
-  newData = true;
+  mpu.newData = true;
 }

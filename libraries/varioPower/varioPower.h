@@ -23,11 +23,9 @@
 
 #include <Arduino.h>
 
-#define INTPIN 3
+#define BUTTONPIN 3
 
-#if INTPIN == 2
-#elif INTPIN == 3
-#else
+#if (BUTTONPIN != 2) && (BUTTONPIN != 3)
 #error Either choose pin 2 or 3 for interrupt
 #endif
 

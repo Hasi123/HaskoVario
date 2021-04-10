@@ -58,6 +58,8 @@ bool MPU6050::calibrate(void) {
   if ((accelData[2] > -7000) || moving) {
     return false;
   }
+  
+  detachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN));
 
   //setup for calibration
   I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, bit(MPU6050_PWR1_DEVICE_RESET_BIT)); //reset
