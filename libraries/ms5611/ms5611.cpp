@@ -70,15 +70,6 @@ void ms5611::update(void) {
   #ifdef MS5611_USE_TIMER
   msReady = false;
   #endif
-  
-  /*
-  cli();
-  if (msCurrentType == (MS5611_TEMP_EVERY - 2)) //get temperature
-    d2 = msMeasure;
-  else //get pressure
-    d1 = msMeasure;
-  sei();
-  */
 
   // ALL MAGIC NUMBERS ARE FROM DATASHEET
   // TEMP & PRESS MATH - PAGE 7/20

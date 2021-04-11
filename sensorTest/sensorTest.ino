@@ -7,6 +7,8 @@ kalmanvert kalmanvert;
 MPU6050 mpu;
 
 void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  
   Serial.begin(57600);
   while (!Serial); // wait for Leonardo enumeration, others continue immediately
   Serial.println("Start");
@@ -21,8 +23,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING);
 
   delay(2000); //let alt stabilize
-  if (mpu.calibrate()) //run calibration if up side down
-    setup();
+  if (mpu.calibrate()){ //run calibration if up side down
+    while(1){
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(200);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(200);
+    }
+  }
 
   //init kalman filter
   ms.update();

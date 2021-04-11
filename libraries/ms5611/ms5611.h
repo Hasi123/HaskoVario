@@ -39,11 +39,11 @@
 //timer 2 defines
 //#define MS5611_USE_TIMER
 #ifdef MS5611_USE_TIMER
-//startMeasure() and getMeasure() take max 0.488ms on 16MHz and 0.976ms on 8MHz
+//startMeasure() and getMeasure() take max 0.5ms on 400khz I2C
 #if F_CPU == 16000000L
 #define MS5611_INTERRUPT_COMPARE 160 //10.048 ms
 #elif F_CPU == 8000000L
-#define MS5611_INTERRUPT_COMPARE 81 //10.496 ms
+#define MS5611_INTERRUPT_COMPARE 78 //10.112 ms
 #else
 #error Interrupt compare value not defined for this CPU frequency.
 #endif //F_CPU

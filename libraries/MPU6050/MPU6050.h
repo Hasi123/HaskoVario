@@ -407,7 +407,7 @@ class MPU6050 {
     calibStruct calibData;
     short gyroData[3], accelData[3];
     long quatData[4];
-    bool isResting(unsigned short threshold = 2000);
+    bool isResting(unsigned short threshold = 2500);
     short readWordAveraged(unsigned char regAddr, unsigned short loops);
     void load_calibration(short *gyro_offs, short *accel_offs, unsigned char *fine_gain);
     char mpu_write_mem(unsigned short mem_addr, unsigned short length, unsigned char *data);

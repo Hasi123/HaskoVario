@@ -46,7 +46,7 @@ short MPU6050::readWordAveraged(unsigned char regAddr, unsigned short loops) {
 //calibrate mpu if initially up side down
 bool MPU6050::calibrate(void) {
 	
-  //check if up side down (allow for calibration error) and if stationary
+  //check if moving
   var.reset();
   for (unsigned char i = 0; i < 50; i++) { //over half second
     while (!newData); //wait for new reading
@@ -55,7 +55,7 @@ bool MPU6050::calibrate(void) {
   }
   bool moving = var.getSum() > 200;
 
-  if ((accelData[2] > -7000) || moving) {
+  if ((accelData[2] > -7000) || moving) { //also up side down?
     return false;
   }
   
@@ -162,7 +162,7 @@ bool MPU6050::calibrate(void) {
           newGain[i] = diff - 14;
         newGain[i] /= 29; //strange value found by experimentation
 		
-        newGain[i] = (newGain[i] << 4) & (origGain[i] & 0b00001111); //combine new acc gain wit factory gyro gain
+        newGain[i] = (newGain[i] << 4) | (origGain[i] & 0b00001111); //combine new acc gain wit factory gyro gain
 
         //final offstes
         newAccOffs[i] = origAccOffs[i] - newAccOffs[i];
