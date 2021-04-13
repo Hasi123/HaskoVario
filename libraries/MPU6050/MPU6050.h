@@ -395,7 +395,7 @@ class MPU6050 {
     char getFIFO(void);
     bool newDmp(void);
     double getVertaccel(void);
-	volatile bool newData;
+	volatile unsigned char newData;
 
   private:
     unsigned char mpuAddr;

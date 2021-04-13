@@ -42,7 +42,8 @@ class kalmanvert {
   void init(double startp, double starta, double sigmap, double sigmaa, unsigned long timestamp);
 
   /* run each time you get new values */
-  void update(double mp, double ma, unsigned long timestamp);
+  void update1(double ma, unsigned long timestamp);
+  void update2(double mp);
 
   /* at any time get result */
   double getPosition();

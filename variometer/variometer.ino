@@ -333,22 +333,38 @@ void enableflightStartComponents(void);
 /*      LOOP      */
 /*----------------*/
 void loop() {
+  static float alt, vertAccel;
 
   //new sensor data ready
-  if (mpu.newData) {
-    mpu.newData = false;
-    
-    ms.update();
-    float alt = ms.getAltitude();
+  switch (mpu.newData) {
 
-    float vertAccel = mpu.getVertaccel();
+    case 1:
+      ms.update();
+      mpu.newData++;
+      break;
 
-    kalmanvert.update(alt, vertAccel, millis());
+    case 2:
+      alt = ms.getAltitude();
+      mpu.newData++;
+      break;
 
-    /* set beeper */
+    case 3:
+      vertAccel = mpu.getVertaccel();
+      mpu.newData++;
+      break;
+
+    case 4:
+      kalmanvert.update1(vertAccel, millis());
+      mpu.newData++;
+      break;
+
+    case 5:
+      kalmanvert.update2(alt);
+      /* set beeper */
 #ifdef HAVE_SPEAKER
-    beeper.setVelocity( kalmanvert.getVelocity() );
+      beeper.setVelocity( kalmanvert.getVelocity() );
 #endif //HAVE_SPEAKER
+      mpu.newData = 0;
   }
 
 
@@ -684,5 +700,5 @@ void getSensors() {
   ms.getMeasure();
   ms.startMeasure();
   mpu.getFIFO();
-  mpu.newData = true;
+  mpu.newData = 1;
 }
