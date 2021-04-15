@@ -386,16 +386,18 @@
 #define MPU6050_ACCEL_FS MPU6050_ACCEL_FS_4  //define accel range here
 #define MPU6050_INTERRUPT_PIN 2 //to which pin is the interrupt conected, comment out if not attached
 #define MPU6050_SAMPLE_RATE 182 //has to be double as DMP rate
+#define MPU6050_FIFO_LENGTH 32
 
 class MPU6050 {
   public:
     MPU6050(unsigned char Addr = MPU6050_DEFAULT_ADDRESS);
     bool calibrate(void);
     void init(void);
+	void parseFIFO(unsigned char *fifo_data);
+	void resetFIFO(void);
     char getFIFO(void);
     bool newDmp(void);
     double getVertaccel(void);
-	volatile unsigned char newData;
 
   private:
     unsigned char mpuAddr;
@@ -413,6 +415,8 @@ class MPU6050 {
     char mpu_write_mem(unsigned short mem_addr, unsigned short length, unsigned char *data);
     char mpu_read_mem(unsigned short mem_addr, unsigned short length, unsigned char *data);
     char load_dmp();
+
 };
+extern MPU6050 mpu;
 
 #endif

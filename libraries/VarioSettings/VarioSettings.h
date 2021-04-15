@@ -185,5 +185,11 @@
 #define NMEA_GGA_TIME_PRECISION 100
 #define NMEA_GGA_ALTI_PRECISION 10.0
 
+/*********************/
+/* TWO WIRE settings */
+/*********************/
+
+/* Set the freq */
+#define VARIO_TW_FREQ 400000UL
 
 #endif

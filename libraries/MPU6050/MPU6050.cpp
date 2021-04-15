@@ -7,6 +7,7 @@
 #include "variance.h"
 
 variance var;
+MPU6050 mpu;
 
 //constructor
 MPU6050::MPU6050(unsigned char Addr) {
@@ -49,8 +50,8 @@ bool MPU6050::calibrate(void) {
   //check if moving
   var.reset();
   for (unsigned char i = 0; i < 50; i++) { //over half second
-    while (!newData); //wait for new reading
-    newData = false;
+    while (!I2C::newData); //wait for new reading
+    I2C::newData = false;
     var.update(gyroData);
   }
   bool moving = var.getSum() > 200;
@@ -60,6 +61,7 @@ bool MPU6050::calibrate(void) {
   }
   
   detachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN));
+  delay(10); //wait for last I2C interrupt to end
 
   //setup for calibration
   I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, bit(MPU6050_PWR1_DEVICE_RESET_BIT)); //reset
@@ -114,9 +116,9 @@ bool MPU6050::calibrate(void) {
   //Accel calibration
   ///////////////////
   //set accel fine gain to 0 for easier calculation
-  I2C::writeBits(mpuAddr, MPU6050_RA_X_FINE_GAIN, 7, 4, 0);
-  I2C::writeBits(mpuAddr, MPU6050_RA_Y_FINE_GAIN, 7, 4, 0);
-  I2C::writeBits(mpuAddr, MPU6050_RA_Z_FINE_GAIN, 7, 4, 0);
+  I2C::writeByte(mpuAddr, MPU6050_RA_X_FINE_GAIN, 0);
+  I2C::writeByte(mpuAddr, MPU6050_RA_Y_FINE_GAIN, 0);
+  I2C::writeByte(mpuAddr, MPU6050_RA_Z_FINE_GAIN, 0);
   delay(50); //to apply offset values
 
   //if not moving get averaged (max) data of active axis (TODO maybe: if new data save the higher value, or better var?)
@@ -275,23 +277,8 @@ void MPU6050::init(void) {
 
 }
 
-//read 1 FIFO packet and parse data
-//should be called after interrupt or data_ready state
-char MPU6050::getFIFO(void) {
-#define FIFO_SIZE 32
-  unsigned char fifo_data[FIFO_SIZE];
-  unsigned short fifo_count = I2C::readWord(mpuAddr, MPU6050_RA_FIFO_COUNTH);
-
-  if (fifo_count != FIFO_SIZE) { //reset FIFO if more data than 1 packet
-    I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, bit(MPU6050_USERCTRL_FIFO_RESET_BIT)); //reset FIFO
-    delay(50);
-    I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, bit(MPU6050_USERCTRL_DMP_EN_BIT) | bit(MPU6050_USERCTRL_FIFO_EN_BIT)); //enable FIFO and DMP
-    return -1;
-  }
-  else {
-    I2C::readBytes(mpuAddr, MPU6050_RA_FIFO_R_W, fifo_count, fifo_data); //get FIFO data
-
-    //parse data
+void MPU6050::parseFIFO(unsigned char *fifo_data){
+      //parse data
     quatData[0] = ((long)fifo_data[0] << 24) | ((long)fifo_data[1] << 16) |
                   ((long)fifo_data[2] << 8) | fifo_data[3];
     quatData[1] = ((long)fifo_data[4] << 24) | ((long)fifo_data[5] << 16) |
@@ -306,6 +293,28 @@ char MPU6050::getFIFO(void) {
     gyroData[0] = ((short)fifo_data[22] << 8) | fifo_data[23];
     gyroData[1] = ((short)fifo_data[24] << 8) | fifo_data[25];
     gyroData[2] = ((short)fifo_data[26] << 8) | fifo_data[27];
+}
+
+void MPU6050::resetFIFO(void) {
+  I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, bit(MPU6050_USERCTRL_FIFO_RESET_BIT)); //reset FIFO
+  delay(50);
+  I2C::writeByte(mpuAddr, MPU6050_RA_USER_CTRL, bit(MPU6050_USERCTRL_DMP_EN_BIT) | bit(MPU6050_USERCTRL_FIFO_EN_BIT)); //enable FIFO and DMP
+}
+
+//read 1 FIFO packet and parse data
+//should be called after interrupt or data_ready state
+char MPU6050::getFIFO(void) {
+  unsigned char fifoData[MPU6050_FIFO_LENGTH];
+  unsigned short fifo_count = I2C::readWord(mpuAddr, MPU6050_RA_FIFO_COUNTH);
+
+  if (fifo_count != MPU6050_FIFO_LENGTH) { //reset FIFO if more data than 1 packet
+    resetFIFO();
+    return -1;
+  }
+  else {
+    I2C::readBytes(mpuAddr, MPU6050_RA_FIFO_R_W, MPU6050_FIFO_LENGTH, fifoData); //get FIFO data
+    parseFIFO(fifoData);
+
     return 0;
   }
 }

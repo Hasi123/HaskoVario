@@ -4,7 +4,6 @@
 #include <kalmanvert.h>
 
 kalmanvert kalmanvert;
-MPU6050 mpu;
 
 unsigned long now;
 unsigned long start, finish;
@@ -12,7 +11,7 @@ unsigned long start, finish;
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 
-  Serial.begin(115200);
+  Serial.begin(57600);
   while (!Serial); // wait for Leonardo enumeration, others continue immediately
   Serial.println("Start");
 
@@ -20,13 +19,17 @@ void setup() {
 
   //ms5611
   ms.init();
+  Serial.println("ms Initialized");
 
   //MPU6050
   mpu.init(); // load dmp and setup for normal use
   attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING);
+  Serial.println("MPU Initialized");
 
   delay(2000); //let alt stabilize
+
   if (mpu.calibrate()) { //run calibration if up side down
+    Serial.println("MPU calibration entered");
     while (1) {
       digitalWrite(LED_BUILTIN, HIGH);
       delay(200);
@@ -35,15 +38,21 @@ void setup() {
     }
   }
 
+  Serial.println("Past MPU calibration");
+
   //init kalman filter
+  I2C::newData = 0;
+  while (!I2C::newData); //wait for fresh data
   ms.update();
   float firstAlti = ms.getAltitude();
+  Serial.print("firstAlti: ");
   Serial.println(firstAlti);
   kalmanvert.init(firstAlti,
                   0.0,
                   POSITION_MEASURE_STANDARD_DEVIATION,
                   ACCELERATION_MEASURE_STANDARD_DEVIATION,
                   millis());
+  Serial.println("Kalman Initialized");
 }
 
 void printdur() {
@@ -54,86 +63,56 @@ void printdur() {
 }
 
 void loop() {
-  static unsigned long times[5];
-
   static float alt, vertAccel;
 
   //new sensor data ready
-  switch (mpu.newData) {
+  switch (I2C::newData) {
+
+    case -1:
+      mpu.resetFIFO();
+      I2C::newData++;
+      break;
 
     case 1:
       //printdur();
       ms.update();
-      mpu.newData++;
+      I2C::newData++;
       break;
 
     case 2:
       //printdur();
       alt = ms.getAltitude();
-      mpu.newData++;
+      I2C::newData++;
       break;
 
     case 3:
       //printdur();
       vertAccel = mpu.getVertaccel();
-      mpu.newData++;
+      I2C::newData++;
       break;
 
     case 4:
       //printdur();
       kalmanvert.update1(vertAccel, millis());
-      mpu.newData++;
+      I2C::newData++;
       break;
 
     case 5:
       //printdur();
       kalmanvert.update2(alt);
-      mpu.newData++;
+      I2C::newData++;
       break;
 
     case 6:
       //printdur();
-      Serial.print(finish - start); Serial.print("\t");
       Serial.print(alt, 5); Serial.print("\t");
       Serial.print(vertAccel, 5); Serial.print(" \t");
       Serial.println(kalmanvert.getVelocity());
 
-      mpu.newData = 0;
+      I2C::newData = 0;
   }
-
-  /* if (mpu.newData) {
-     mpu.newData = false;
-
-     times[0] = micros();
-     ms.update();
-     times[1] = micros();
-     float alt = ms.getAltitude();
-     times[2] = micros();
-     float vertAccel = mpu.getVertaccel();
-     times[3] = micros();
-     kalmanvert.update(alt, vertAccel, millis());
-     times[4] = micros();
-
-
-     for (byte i = 0; i < 4; i++) {
-       Serial.print(times[i + 1] - times[i]); Serial.print("\t");
-     }
-     Serial.println();
-
-       Serial.print(alt, 5); Serial.print("\t");
-       Serial.print(vertAccel, 5); Serial.print(" \t");
-       Serial.println(kalmanvert.getVelocity());
-
-    }*/
 }
 
 void getSensors() {
-  //start = micros();
-  ms.getMeasure();
-  ms.startMeasure();
-  //finish = micros();
-  start = micros();
-  mpu.getFIFO();
-  finish = micros();
-  mpu.newData = 1;
+  I2C::intHandler();
 }

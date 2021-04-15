@@ -55,6 +55,7 @@ class ms5611 {
 	static void stopTimer(void);
     static void startMeasure(void);
     static void getMeasure(void);
+	static void parseMeasure(bool tempM, uint8_t *ms_data);
     static void update(void);
     static float getAltitude(void);
     static float getPressure(void);

@@ -53,7 +53,6 @@
 /*******************/
 VarioPower varioPower;
 kalmanvert kalmanvert;
-MPU6050 mpu;
 
 /*******************/
 /* General objects */
@@ -310,6 +309,8 @@ void setup() {
     varioPower.reset(); //reset to load calibration data and dmp again
 
   //init kalman filter
+  I2C::newData = 0;
+  while (!I2C::newData); //wait for fresh data
   ms.update();
   float firstAlti = ms.getAltitude();
   kalmanvert.init(firstAlti,
@@ -336,26 +337,31 @@ void loop() {
   static float alt, vertAccel;
 
   //new sensor data ready
-  switch (mpu.newData) {
+  switch (I2C::newData) {
+
+    case -1:
+      mpu.resetFIFO();
+      I2C::newData++;
+      break;
 
     case 1:
       ms.update();
-      mpu.newData++;
+      I2C::newData++;
       break;
 
     case 2:
       alt = ms.getAltitude();
-      mpu.newData++;
+      I2C::newData++;
       break;
 
     case 3:
       vertAccel = mpu.getVertaccel();
-      mpu.newData++;
+      I2C::newData++;
       break;
 
     case 4:
       kalmanvert.update1(vertAccel, millis());
-      mpu.newData++;
+      I2C::newData++;
       break;
 
     case 5:
@@ -364,7 +370,7 @@ void loop() {
 #ifdef HAVE_SPEAKER
       beeper.setVelocity( kalmanvert.getVelocity() );
 #endif //HAVE_SPEAKER
-      mpu.newData = 0;
+      I2C::newData = 0;
   }
 
 
@@ -697,8 +703,5 @@ void enableflightStartComponents(void) {
 }
 
 void getSensors() {
-  ms.getMeasure();
-  ms.startMeasure();
-  mpu.getFIFO();
-  mpu.newData = 1;
+  I2C::intHandler();
 }

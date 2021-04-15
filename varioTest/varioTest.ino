@@ -10,7 +10,6 @@
 
 VarioPower varioPower;
 kalmanvert kalmanvert;
-MPU6050 mpu;
 
 
 void setup() {
@@ -39,6 +38,8 @@ void setup() {
     varioPower.reset(); //reset to load calibration data and dmp again
 
   //init kalman filter
+  I2C::newData = 0;
+  while(!I2C::newData); //wait for fresh data
   ms.update();
   float firstAlti = ms.getAltitude();
   Serial.println(firstAlti);
@@ -51,8 +52,8 @@ void setup() {
 
 void loop() {
   //new sensors ready
-  if (mpu.newData) { // read interrupt status register
-    mpu.newData = false;
+  if (I2C::newData) { // read interrupt status register
+    I2C::newData = false;
     //static unsigned long lastTime;
     //unsigned long now = micros();
     //Serial.print(now - lastTime); Serial.print("\t");
@@ -71,7 +72,8 @@ void loop() {
     //Serial.print(newaccel[2]); Serial.print("\t");
 
 
-    kalmanvert.update(alt, vertAccel, millis());
+    kalmanvert.update1(vertAccel, millis());
+    kalmanvert.update2(alt);
     //Serial.print(kalmanvert.getVelocity()); Serial.print("\t");
 
 
@@ -87,8 +89,5 @@ void loop() {
 }
 
 void getSensors() {
-  ms.getMeasure();
-  ms.startMeasure();
-  mpu.getFIFO();
-  mpu.newData = true;
+  I2C::intHandler();
 }

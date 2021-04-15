@@ -39,6 +39,15 @@ void ms5611::getMeasure(void) {
 #endif
 }
 
+void ms5611::parseMeasure(bool tempM, uint8_t *ms_data){
+  if (tempM) { //get temperature
+    d2 = ((uint32_t)ms_data[0] << 16) | ((uint32_t)ms_data[1] << 8) | (uint32_t)ms_data[2];
+  }
+  else { //get pressure
+    d1 = ((uint32_t)ms_data[0] << 16) | ((uint32_t)ms_data[1] << 8) | (uint32_t)ms_data[2];
+  }
+}
+
 void ms5611::init(void) {
   /* reset */
   I2C::sendCMD(msAddr, MS5611_RESET);
