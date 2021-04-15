@@ -107,7 +107,8 @@ void loop() {
       //printdur();
       Serial.print(alt, 5); Serial.print("\t");
       Serial.print(vertAccel, 5); Serial.print(" \t");
-      Serial.println(kalmanvert.getVelocity());
+      Serial.print(kalmanvert.getVelocity());
+      Serial.println();
 
       I2C::newData = 0;
   }

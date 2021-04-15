@@ -385,7 +385,7 @@
 /* config settings here */
 #define MPU6050_ACCEL_FS MPU6050_ACCEL_FS_4  //define accel range here
 #define MPU6050_INTERRUPT_PIN 2 //to which pin is the interrupt conected, comment out if not attached
-#define MPU6050_SAMPLE_RATE 182 //has to be double as DMP rate
+#define MPU6050_SAMPLE_RATE 200 //has to be double as DMP rate, does not change fifo rate after dmp has been loaded
 #define MPU6050_FIFO_LENGTH 32
 
 class MPU6050 {
