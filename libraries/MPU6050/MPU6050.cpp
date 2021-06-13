@@ -150,7 +150,7 @@ bool MPU6050::calibrate(void) {
     //if all axes have data point -> calculate values -> write to registers and print
     if (calibState == 0b111111) {
       short newAccOffs[3];
-      char newGain[3];
+      unsigned char newGain[3];
 
       for (unsigned char i = 0; i < 3; i++) {
         //Offsets
@@ -159,12 +159,12 @@ bool MPU6050::calibrate(void) {
         //Scaling
         short diff = 2048 - (accelMax[i * 2] - newAccOffs[i]); //need to calculate offset compansated values
         if (diff >= 0) //round positive values
-          newGain[i] = diff + 14;
+          diff += 14;
         else //round negative values
-          newGain[i] = diff - 14;
-        newGain[i] /= 29; //strange value found by experimentation
+          diff -= 14;
+        diff /= 29; //strange value found by experimentation
 		
-        newGain[i] = (newGain[i] << 4) | (origGain[i] & 0b00001111); //combine new acc gain wit factory gyro gain
+        newGain[i] = (diff << 4) | (origGain[i] & 0b00001111); //combine new acc gain with factory gyro gain
 
         //final offstes
         newAccOffs[i] = origAccOffs[i] - newAccOffs[i];
