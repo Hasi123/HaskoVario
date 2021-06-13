@@ -23,22 +23,20 @@
 
 #include <Arduino.h>
 
-#define INTPIN 3
+#define BUTTONPIN 3
 
-#if INTPIN == 2
-#define INTPINREG PIND2
-#elif INTPIN == 3
-#define INTPINREG PIND3
-#else
+#if (BUTTONPIN != 2) && (BUTTONPIN != 3)
 #error Either choose pin 2 or 3 for interrupt
 #endif
 
 class VarioPower
 {
   public:
-    void sleep();
-    void init();
-    bool update();
+    void reset(void);
+    void sleep(void);
+    void init(void);
+	void updateFW(void);
+    void update(void);
   private:
 	uint8_t beepStatus;
     uint32_t nextEvent;

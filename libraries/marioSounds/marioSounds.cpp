@@ -39,7 +39,7 @@ void MarioSounds::bootUp(){
   toneAC(380, 10, 100, true);
   delay(100);
   
-  if(VARIOMETER_POWER_ON_DELAY>1800) delay(VARIOMETER_POWER_ON_DELAY-1800);
+  //if(VARIOMETER_POWER_ON_DELAY>1800) delay(VARIOMETER_POWER_ON_DELAY-1800);
 }
 
 void MarioSounds::shutDown(){

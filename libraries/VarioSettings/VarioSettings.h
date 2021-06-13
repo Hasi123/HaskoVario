@@ -51,9 +51,6 @@
 /* The volume of the beeps, max = 10 */
 #define VARIOMETER_BEEP_VOLUME 10
 
-/* Enable mute on tap feature */
-//#define MUTE_ON_TAP
-
 /* The variometer react like this according to vertical speed in m/s :        */
 /* (near climbing beep is not enabled by default)                             */
 /*                                                                            */
@@ -152,52 +149,17 @@
 //#define HAVE_BLUETOOTH
 //#define HAVE_VOLTAGE_DIVISOR
 
-/* ms5611 parameters */
-/* You can set the calibration coefficients if known */
-#define MS5611_STATIC_ADDRESS 0x77
-//#define MS5611_STATIC_CALIBRATION {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}
-
-/* We advice using the ms5611 barometer */
-/* but if you want to use the BMP280 you can enable it here */
-//#define HAVE_BMP280
-#define BMP280_STATIC_ADDRESS 0x76
-//#define BMP280_STATIC_CALIBRATION {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}
-
-/* If you embed an accelerometer set the model here. */
-/* Possible values are :                             */
-/*   MPU6050, MPU6500, MPU9150, MPU9250              */
-#define MPU6050
-#define MPU_STATIC_ADDRESS 0x69
-
-/* calibration method */
-// comment this following line to use EEPROM instead of static values
-#define VERTACCEL_STATIC_CALIBRATION
-#define VERTACCEL_GYRO_CAL_BIAS {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-#define VERTACCEL_ACCEL_CAL_BIAS {0, 0, 0}
-#define VERTACCEL_ACCEL_CAL_SCALE 0
-#define VERTACCEL_MAG_CAL_BIAS {0, 0, 0}
-#define VERTACCEL_MAG_CAL_PROJ_SCALE -16689
-
-/* enable if you want to use the MPU INT pin */
-#define MPU_ENABLE_INT_PIN
-#define MPU_INT_PIN 2
-
 /* Set the pins used for Screen and SD card modules */
 #define VARIOSCREEN_DC_PIN 6
 #define VARIOSCREEN_CS_PIN 7
 #define VARIOSCREEN_RST_PIN 14
 #define SDCARD_CS_PIN 8
-#define VOLTAGE_DIVISOR_PIN 15
 
 /* time needed to power on all the devices */
 #define VARIOMETER_POWER_ON_DELAY 2000
 
 /* The screen contrast */
 #define VARIOSCREEN_CONTRAST 60
-
-/* The voltage divisor */
-#define VOLTAGE_DIVISOR_VALUE 1.27
-#define VOLTAGE_DIVISOR_REF_VOLTAGE 3.3
 
 /* The bauds rate used by the GPS and Bluetooth modules. */
 /* GPS and bluetooth need to have the same bauds rate.   */
@@ -229,6 +191,5 @@
 
 /* Set the freq */
 #define VARIO_TW_FREQ 400000UL
-
 
 #endif

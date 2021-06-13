@@ -1,95 +1,82 @@
-/* ms5611 -- ms5611 interrupt safe library 
- *
- * Copyright 2016-2019 Baptiste PELLEGRIN
- * 
- * This file is part of GNUVario.
- *
- * GNUVario is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * GNUVario is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
+/*  How to use
+  void setup() {
+    ms.init(); //Init once in setup()
+  }
 
-#ifndef MS5611_H
-#define MS5611_H
+  void loop() {
+    if (ms.ready())
+      ms.update();
+
+    float alt = ms.getAltitude(); //or ms.getPressure() or ms.getTemperature() depending on what you need
+}
+*/
+
+#ifndef _MS5611_H
+#define _MS5611_H
 
 #include <Arduino.h>
-#include <VarioSettings.h>
 
-/* the normalized sea level pressure */  
+#define MS5611_ADDRESS_CSB_LOW     0x77 //address pin low (GND)
+#define MS5611_ADDRESS_CSB_HIGH    0x76 //address pin high (VCC)
+#ifndef MS5611_DEFAULT_ADDRESS
+#define MS5611_DEFAULT_ADDRESS     MS5611_ADDRESS_CSB_LOW
+#endif
+
+#define MS5611_RESET        0x1E
+#define MS5611_READ_PROM    0xA2
+#define MS5611_CONV_D1      0x48 //OSR=4096
+#define MS5611_CONV_D2      0x58 //OSR=4096
+#define MS5611_ADC_READ     0x00
+
+#define MS5611_RESET_DELAY  3
+#define MS5611_CONV_DELAY   10 //max 9.04ms
+
+#define MS5611_TEMP_EVERY 20 //how often should we update temperature?
+
+//values for calculations
 #define MS5611_BASE_SEA_PRESSURE 1013.25
 
-
-/*############################################*/
-/* You can compile ms5611 with static address */
-/* or static calibration coefficients.        */
-/* For this define the values with :          */
-/*                                            */
-/* #define MS5611_STATIC_ADDRESS              */
-/* or                                         */
-/* #define MS5611_STATIC_CALIBRATION          */
-/*                                            */
-/*############################################*/
-
-static constexpr uint16_t ms5611DefaultAdress = 0x77;
-
-struct Ms5611Calibration {
-
-  uint16_t coeffs[6];
-};
-
-
-/*####################################*/
-/* Here the ms5611 hardware constants */
-/*####################################*/
-
-#define MS5611_CMD_RESET (0x1E)
-#define MS5611_CMD_READ_PROM (0xA2)
-#define MS5611_CMD_CONV_D1 (0x46)
-#define MS5611_CMD_CONV_D2 (0x58)
-#define MS5611_CMD_ADC_READ (0x00)
-
-#define MS5611_RESET_DELAY 3
-#define MS5611_CONV_DELAY 9
-
-
-/*-----------------------*/
-/*                       */
-/*     The main class    */
-/*                       */
-/*-----------------------*/
-class Ms5611 {
-
- public:
-#ifndef MS5611_STATIC_ADDRESS
-  Ms5611(uint16_t twAddress = ms5611DefaultAdress) : address(twAddress) { } //Address set with constructor
-#endif
-  void init(void);
-  void computeMeasures(uint8_t* d1Buff, uint8_t* d2Buff, double& temperature, double& pressure);
-  static double computeAltitude(double pressure);
-  void readHardwareCalibration(uint16_t* cal);
-
- private:
-#ifdef MS5611_STATIC_ADDRESS
-  static constexpr uint16_t address = MS5611_STATIC_ADDRESS;
+//timer 2 defines
+//#define MS5611_USE_TIMER
+#ifdef MS5611_USE_TIMER
+//startMeasure() and getMeasure() take max 0.5ms on 400khz I2C
+#if F_CPU == 16000000L
+#define MS5611_INTERRUPT_COMPARE 160 //10.048 ms
+#elif F_CPU == 8000000L
+#define MS5611_INTERRUPT_COMPARE 78 //10.112 ms
 #else
-  const uint16_t address;
+#error Interrupt compare value not defined for this CPU frequency.
+#endif //F_CPU
+#endif //MS5611_USE_TIMER
+
+class ms5611 {
+  public:
+    static void init(void);
+	static void stopTimer(void);
+    static void startMeasure(void);
+    static void getMeasure(void);
+	static void parseMeasure(bool tempM, uint8_t *ms_data);
+    static void update(void);
+    static float getAltitude(void);
+    static float getPressure(void);
+    static float getTemperature(void);
+#ifdef MS5611_USE_TIMER
+	static bool ready(void);
 #endif
 
-#ifdef MS5611_STATIC_CALIBRATION
-  static constexpr Ms5611Calibration calibration = MS5611_STATIC_CALIBRATION;
-#else
-  Ms5611Calibration calibration;
+  private:
+    ms5611(void) {} //disable creating other instances
+    static const unsigned char msAddr = MS5611_DEFAULT_ADDRESS;
+    static float temperature, pressure;
+    static uint8_t volatile msCurrentType;
+    //static uint32_t volatile msMeasure;
+	static uint32_t volatile d1, d2;
+    static float msCoeffs[6];
+#ifdef MS5611_USE_TIMER
+	static bool msReady;
 #endif
 };
 
+extern ms5611 ms;
 
-#endif //MS5611_H
+#endif

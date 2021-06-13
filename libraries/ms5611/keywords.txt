@@ -1,0 +1,16 @@
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+ms5611	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+init	KEYWORD2
+startMeasure	KEYWORD2
+getMeasure	KEYWORD2
+compute	KEYWORD2
+getAltitude	KEYWORD2
+getPressure	KEYWORD2
+getTemperature	KEYWORD2

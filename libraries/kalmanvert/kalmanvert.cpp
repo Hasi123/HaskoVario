@@ -18,7 +18,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <kalmanvert.h>
+#include "kalmanvert.h"
 
 #include <Arduino.h>
 
@@ -42,7 +42,7 @@ void kalmanvert::init(double startp, double starta, double sigmap, double sigmaa
   p22 = 0;
 }
 
-void kalmanvert::update(double mp, double ma, unsigned long timestamp) {
+void kalmanvert::update1(double ma, unsigned long timestamp) {
 
   /**************/
   /* delta time */
@@ -72,7 +72,9 @@ void kalmanvert::update(double mp, double ma, unsigned long timestamp) {
   p21 += inc;
   p12 += inc;
   p22 += dt*dt*vara;
+}
 
+void kalmanvert::update2(double mp) {
   /********************/
   /* gaussian product */
   /********************/

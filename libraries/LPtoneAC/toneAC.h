@@ -118,7 +118,5 @@
 		);
 
   void noToneAC();
-#endif
 
-/* mute/unmute setting */
-void toneACMute(bool newMuteState);
+#endif

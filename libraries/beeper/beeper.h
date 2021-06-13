@@ -110,44 +110,44 @@
 class beeper {
 
  public:
-  beeper(double sinkingThreshold = BEEP_VELOCITY_DEFAULT_SINKING_THRESHOLD,
-	 double climbingThreshold = BEEP_VELOCITY_DEFAULT_CLIMBING_THRESHOLD,
-	 double nearClimbingSensitivity = BEEP_VELOCITY_DEFAULT_NEAR_CLIMBING_SENSITIVITY,
-	 uint8_t volume = BEEP_DEFAULT_VOLUME);
-
   /* to stop beeper, set volume = 0 or set a very low and hight threshold. ex : -1000.0 and 1000.0 */
-  void setThresholds(double sinkingThreshold = BEEP_VELOCITY_DEFAULT_SINKING_THRESHOLD,
-		     double climblingThreshold = BEEP_VELOCITY_DEFAULT_CLIMBING_THRESHOLD,
-		     double nearClimbingSensitivity = BEEP_VELOCITY_DEFAULT_NEAR_CLIMBING_SENSITIVITY);
+  static void setThresholds(double sinkingThreshold,
+		     double climblingThreshold,
+		     double nearClimbingSensitivity);
 
-  void setVolume(uint8_t newVolume = BEEP_DEFAULT_VOLUME);
+  static void setVolume(uint8_t newVolume);
 
   /* set near thermal alarm status */
-  void setGlidingBeepState(boolean status);
-  void setGlidingAlarmState(boolean status);
+  static void setGlidingBeepState(bool status);
+  static void setGlidingAlarmState(bool status);
 
   /* run each time you get new velocity data */
-  void setVelocity(double velocity);
+  static void setVelocity(double velocity);
 
   /* run as often as possible */
-  void update();
+  static void update(void);
 
  private:
-  void setBeepParameters(double velocity);
-  void setBeepPaternPosition(double velocity);
-  void setTone();
-  double beepSinkingThreshold;
-  double beepGlidingThreshold;
-  double beepClimbingThreshold;
-  uint8_t volume;
-  unsigned long beepStartTime;
-  double beepVelocity;
-  double beepFreq;
-  double beepPaternBasePosition;
-  double beepPaternPosition;
-  uint8_t beepState;
-  uint8_t beepType;
+  beeper(void) {}
+  static void setBeepParameters(double velocity);
+  static void setBeepPaternPosition(double velocity);
+  static void setTone(void);
+  static double beepSinkingThreshold;
+  static double beepGlidingThreshold;
+  static double beepClimbingThreshold;
+  static uint8_t volume;
+  static unsigned long beepStartTime;
+  static double beepVelocity;
+  static double beepFreq;
+  static double beepPaternBasePosition;
+  static double beepPaternPosition;
+  static uint8_t beepState;
+  static uint8_t beepType;
 };
+
+#ifdef HAVE_SPEAKER
+extern beeper beeper;
+#endif
 
 
 #endif

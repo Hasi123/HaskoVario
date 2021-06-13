@@ -1,0 +1,14 @@
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+MPU6050	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+calibrate	KEYWORD2
+init	KEYWORD2
+getFIFO	KEYWORD2
+newDmp	KEYWORD2
+getVertaccel	KEYWORD2
