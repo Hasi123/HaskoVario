@@ -84,6 +84,23 @@ bool MPU6050::calibrate(void) {
   origGain[1] = I2C::readByte(mpuAddr, MPU6050_RA_Y_FINE_GAIN);
   origGain[2] = I2C::readByte(mpuAddr, MPU6050_RA_Z_FINE_GAIN);
   //...gyro offsets not needed, since 0
+  
+  
+  debugString += "orig off,gain:\n";
+  
+  debugString += String(origAccOffs[0]);
+  debugString += ",";
+  debugString += String(origAccOffs[1]);
+  debugString += ",";
+  debugString += String(origAccOffs[2]);
+  debugString += '\n';
+  
+  debugString += String((byte)origGain[0]);
+  debugString += ",";
+  debugString += String((byte)origGain[1]);
+  debugString += ",";
+  debugString += String((byte)origGain[2]);
+  debugString += '\n';
 
   //////////////////
   //gyro calibration
@@ -148,23 +165,38 @@ bool MPU6050::calibrate(void) {
     }
 
     //if all axes have data point -> calculate values -> write to registers and print
+	
     if (calibState == 0b111111) {
       short newAccOffs[3];
-      char newGain[3];
+      unsigned char newGain[3];
+	  
+	  debugString += "newGain:\n";
 
       for (unsigned char i = 0; i < 3; i++) {
         //Offsets
-        newAccOffs[i] = (accelMax[i * 2] + accelMax[i * 2 + 1]) / 2;
+        newAccOffs[i] = (accelMax[i * 2] + accelMax[i * 2 + 1]) / 2;  //431,5
 
         //Scaling
-        short diff = 2048 - (accelMax[i * 2] - newAccOffs[i]); //need to calculate offset compansated values
+        short diff = 2048 - (accelMax[i * 2] - newAccOffs[i]); //need to calculate offset compansated values //-186
         if (diff >= 0) //round positive values
-          newGain[i] = diff + 14;
+          diff += 14;
         else //round negative values
-          newGain[i] = diff - 14;
-        newGain[i] /= 29; //strange value found by experimentation
+          diff -= 14;  //-200
+		  
+		debugString += String(diff);
+		debugString += ",";
 		
-        newGain[i] = (newGain[i] << 4) | (origGain[i] & 0b00001111); //combine new acc gain wit factory gyro gain
+        diff /= 29; //strange value found by experimentation  //-6,8965
+		
+		debugString += String(diff);
+		debugString += ",";
+		debugString += String(diff << 4);
+		debugString += ",";
+		
+        newGain[i] = (diff << 4) | (origGain[i] & 0b00001111); //combine new acc gain with factory gyro gain
+		
+		debugString += String(newGain[i]);
+		debugString += '\n';
 
         //final offstes
         newAccOffs[i] = origAccOffs[i] - newAccOffs[i];
@@ -174,6 +206,28 @@ bool MPU6050::calibrate(void) {
       EEPROM.put(0, gyroData);
       EEPROM.put(6, newAccOffs);
       EEPROM.put(12, newGain);
+	  
+	    debugString += "acc readings:\n";
+  
+  for (int i=0; i<6; i++){
+  debugString += String(accelMax[i]);
+  debugString += ",";
+  }
+  debugString += "\nnew off,gain:\n";
+  
+    debugString += String(newAccOffs[0]);
+  debugString += ",";
+  debugString += String(newAccOffs[1]);
+  debugString += ",";
+  debugString += String(newAccOffs[2]);
+  debugString += '\n';
+  
+    debugString += String(newGain[0]);
+  debugString += ",";
+  debugString += String(newGain[1]);
+  debugString += ",";
+  debugString += String(newGain[2]);
+  debugString += '\n';
 
       return true;
     } //calculate calibration values
@@ -247,6 +301,7 @@ char MPU6050::load_dmp() {  //using compressed DMP firmware
 
 //Init the sensor, load calibration data and dmp
 void MPU6050::init(void) {
+  debugString = "Start\n";
   I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, bit(MPU6050_PWR1_DEVICE_RESET_BIT)); //reset
   delay(100);
   I2C::writeByte(mpuAddr, MPU6050_RA_PWR_MGMT_1, MPU6050_CLOCK_PLL_XGYRO); //wake up and set clock to gyro X (recomended by datasheet)

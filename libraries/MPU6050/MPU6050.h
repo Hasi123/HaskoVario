@@ -398,6 +398,8 @@ class MPU6050 {
     char getFIFO(void);
     bool newDmp(void);
     double getVertaccel(void);
+	short gyroData[3], accelData[3];
+	String debugString;
 
   private:
     unsigned char mpuAddr;
@@ -407,7 +409,7 @@ class MPU6050 {
       unsigned char fineGain[3];
     };
     calibStruct calibData;
-    short gyroData[3], accelData[3];
+    //short gyroData[3], accelData[3];
     long quatData[4];
     bool isResting(unsigned short threshold = 2500);
     short readWordAveraged(unsigned char regAddr, unsigned short loops);

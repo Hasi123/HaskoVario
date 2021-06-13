@@ -112,6 +112,8 @@ void loop() {
 
       I2C::newData = 0;
   }
+
+  //digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 }
 
 void getSensors() {
