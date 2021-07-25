@@ -38,7 +38,6 @@ class VarioPower
 	void updateFW(void);
     void update(void);
   private:
-	uint8_t beepStatus;
     uint32_t nextEvent;
 };
 

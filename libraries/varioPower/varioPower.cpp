@@ -96,7 +96,7 @@ void VarioPower::sleep(void) {
   //////////////
 
   //ISR routine runs
-  
+
   sleep_disable();
 
   reset();
@@ -107,15 +107,15 @@ void VarioPower::init(void) {
   analogReference(INTERNAL);
   //turn on pullup for button
   PORTD |= bit(BUTTONPIN);
-  
+
   //trun on LDO
   DDRD |= bit(PD5);
   PORTD |= bit(PD5);
-  
+
   //reset mcu after 1 s on button push if code hangs somewhere
   EIFR = 3;  //clear flag for interrupts
   attachInterrupt(digitalPinToInterrupt(BUTTONPIN), buttonAction, FALLING);
-  
+
   delay(200); //let devices power on
 }
 
@@ -136,26 +136,49 @@ void VarioPower::update(void) {
   }
 
   //check voltage at lower frequency
+  //beepStatus(nextAdd) 0:get voltage(0), 1:beep(200), 2:beep(150), 3:schedule(120000)
   if (nextEvent <= millis()) {
-    uint16_t volts = analogRead(A1);
-    uint16_t nextAdd = 10000;
+    static uint8_t beepStatus;
+    uint32_t nextAdd;
 
-    if (volts < 740) { //3.45V
-      if (volts < 708) {
-        this->sleep();  //3.3V
-      }
-      if (beepStatus < 3) {
-        if (beepStatus == 0) {
-          beeper::setVolume(0);
+    switch (beepStatus) {
+      default:
+        {
+          uint16_t volts = analogRead(A1);
+          if (volts < 740) { //3.45V
+            if (volts < 708) {
+              this->sleep();  //3.3V
+            }
+            beeper::setVolume(0); //silence normal vario beeps
+            nextAdd = 10;
+            beepStatus++;
+          }
+          else {
+            beepStatus = 3;
+          }
         }
-        marioSounds.lowVoltage();
-        nextAdd = 200;
-        beepStatus++;
-      }
-      else {
-        beeper::setVolume(10);
-        beepStatus = 0;
-      }
+        break;
+      case 1:
+        {
+          marioSounds.lowVoltage();
+          nextAdd = 200;
+          beepStatus++;
+        }
+        break;
+      case 2:
+        {
+          marioSounds.lowVoltage();
+          nextAdd = 150;
+          beepStatus++;
+        }
+        break;
+      case 3:
+        {
+          beeper::setVolume(10); //restore vario beeps
+          nextAdd = 120000;
+          beepStatus = 0;
+        }
+        break;
     }
     nextEvent = millis() + nextAdd;
   }
