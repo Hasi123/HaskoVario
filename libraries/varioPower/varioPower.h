@@ -37,8 +37,6 @@ class VarioPower
     void init(void);
 	void updateFW(void);
     void update(void);
-  private:
-    uint32_t nextEvent;
 };
 
 #endif

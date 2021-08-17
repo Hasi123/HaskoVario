@@ -130,6 +130,8 @@ void VarioPower::updateFW(void) {
 }
 
 void VarioPower::update(void) {
+  static uint32_t nextEvent;
+
   //check button pin
   if (!(PIND & bit(BUTTONPIN))) {
     this->sleep();
@@ -139,7 +141,7 @@ void VarioPower::update(void) {
   //beepStatus(nextAdd) 0:get voltage(0), 1:beep(200), 2:beep(150), 3:schedule(120000)
   if (nextEvent <= millis()) {
     static uint8_t beepStatus;
-    uint32_t nextAdd;
+    uint32_t nextAdd = 10;
 
     switch (beepStatus) {
       default:
@@ -149,9 +151,8 @@ void VarioPower::update(void) {
             if (volts < 708) {
               this->sleep();  //3.3V
             }
-            beeper::setVolume(0); //silence normal vario beeps
-            nextAdd = 10;
             beepStatus++;
+			beeper::setVolume(0); //silence normal vario beeps
           }
           else {
             beepStatus = 3;
@@ -180,6 +181,6 @@ void VarioPower::update(void) {
         }
         break;
     }
-    nextEvent = millis() + nextAdd;
+    nextEvent += nextAdd;
   }
 }
