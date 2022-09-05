@@ -20,23 +20,20 @@
 
 #include <Arduino.h>
 #include <VarioSettings.h>
-#include <IntTW.h>
-#include <vertaccel.h>
-#include <EEPROM.h>
-#include <LightInvensense.h>
-#include <avr/pgmspace.h>
+#include <beeper.h>
 #include <toneAC.h>
-#include <FirmwareUpdater.h>
-#include <IGCSentence.h>
+#include <avr/pgmspace.h>
 #include <digit.h>
+#include <IGCSentence.h>
+#include <marioSounds.h>
+#include <varioPower.h>
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 /*!!            !!! WARNING  !!!              !!*/
 /*!! Before building check :                  !!*/
 /*!! libraries/VarioSettings/VarioSettings.h  !!*/
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-Vertaccel vertaccel;
-
+VarioPower varioPower;
 
 #define BEEP_FREQ 800
 const char model[] PROGMEM = VARIOMETER_MODEL;
@@ -46,14 +43,12 @@ const char glider[] PROGMEM = VARIOMETER_GLIDER_NAME;
 IGCHeader header;
 
 void setup() {
+  //init varioPower
+  varioPower.init();
   
    /* launch firmware update if needed */
   delay(VARIOMETER_POWER_ON_DELAY);
-  intTW.begin();
-  vertaccel.init();
-  if( firmwareUpdateCond() ) {
-   firmwareUpdate();
-  }
+  varioPower.updateFW();
   
   /* save params to EEPROM */
   boolean state = header.saveParams(model, pilot, glider);
@@ -69,6 +64,7 @@ void setup() {
       delay(200);
     }
   }
+  varioPower.sleep();
 }
 
 void loop() {
