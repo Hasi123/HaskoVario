@@ -130,7 +130,7 @@
 
 /* When there is no GPS to sync variometer bluetooth sentences */
 /* set the delay between sendings in milliseconds.             */ 
-#define VARIOMETER_SENTENCE_DELAY 2000
+#define VARIOMETER_SENTENCE_DELAY 550
 
 
 /*----------------------------*/
@@ -146,7 +146,7 @@
 //#define HAVE_SCREEN
 #define HAVE_GPS
 #define HAVE_SDCARD
-//#define HAVE_BLUETOOTH
+#define HAVE_BLUETOOTH
 //#define HAVE_VOLTAGE_DIVISOR
 
 /* Set the pins used for Screen and SD card modules */
