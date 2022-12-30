@@ -2,6 +2,9 @@
 \#*\#
 *.hex
 *.HEX
+*.eep
+*.elf
+*.bin
 best-fit-calibration/*.IGC
 best-fit-calibration/*.pyc
 best-fit-calibration/__pycache__
