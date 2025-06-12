@@ -57,7 +57,7 @@
 /* <--LOW-BEEP--|------SILENT------|--NEAR-CLIMBING-BEEP--|--CLIMBING-BEEP--> */
 /*              |                  |                      |                   */
 /*           SINKING         CLIMBING-SENSITIVITY      CLIMBING               */
-#define VARIOMETER_SINKING_THRESHOLD -2.0
+#define VARIOMETER_SINKING_THRESHOLD -2.5
 #define VARIOMETER_CLIMBING_THRESHOLD 0.2
 #define VARIOMETER_NEAR_CLIMBING_SENSITIVITY 0.5
 

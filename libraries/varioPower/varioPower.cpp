@@ -30,11 +30,6 @@ void wakeUp() {
   //disable interrupts to avoid interrupt bootloop
   noInterrupts();
 }
-void buttonAction() {
-  delayMicroseconds(2000); //debounce
-  if (!(PIND & bit(BUTTONPIN)))
-    wdt_enable(WDTO_250MS);
-}
 
 void VarioPower::reset(void) {
   //reset atmega
@@ -112,11 +107,10 @@ void VarioPower::init(void) {
   DDRD |= bit(PD5);
   PORTD |= bit(PD5);
 
-  //reset mcu after 1 s on button push if code hangs somewhere
-  EIFR = 3;  //clear flag for interrupts
-  attachInterrupt(digitalPinToInterrupt(BUTTONPIN), buttonAction, FALLING);
-
-  delay(200); //let devices power on
+  delay(1000); //let devices power on and button delay
+  if (PIND & bit(BUTTONPIN)) { //only power on if still pressed
+      this->sleep();
+  }
 }
 
 void VarioPower::updateFW(void) {
@@ -131,15 +125,22 @@ void VarioPower::updateFW(void) {
 
 void VarioPower::update(void) {
   static uint32_t nextEvent;
+  static uint32_t lastButtonUnpressed;
+  uint32_t now = millis();
 
   //check button pin
   if (!(PIND & bit(BUTTONPIN))) {
-    this->sleep();
+    if (now - lastButtonUnpressed > 1000){
+       this->sleep();
+    }
+  }
+  else{
+      lastButtonUnpressed = now;
   }
 
   //check voltage at lower frequency
   //beepStatus(nextAdd) 0:get voltage(0), 1:beep(200), 2:beep(150), 3:schedule(120000)
-  if (nextEvent <= millis()) {
+  if (nextEvent <= now) {
     static uint8_t beepStatus;
     uint32_t nextAdd = 10;
 
