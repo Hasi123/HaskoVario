@@ -1,0 +1,18 @@
+#############################
+#                           #
+#        HaskoVario         #
+#                           #
+# The open source and open  #
+# hardware variometer       #
+#############################
+
+Update instructions:
+- Remove the SD card from the vario.
+- Connect it to your PC using an SD card reader.
+- Make sure the SD card is formatted as FAT (not FAT32). Note: FAT only supports partitions up to 1 GB.
+- Download the latest FIRM.HEX from the Releases page.
+- Copy the FIRM.HEX to the root of the SD card.
+- Safely eject/unmount the SD card and remove it from your PC.
+- Insert the SD card into the vario. Make sure it is properly inserted.
+- Power on the vario and hold the power button until after the boot sound has finished playing.
+- Optional, but highly recommended to delete the FIRM.HEX after the update from the SD card using your PC.
