@@ -111,6 +111,9 @@ void VarioPower::init(void) {
   if (PIND & bit(BUTTONPIN)) { //only power on if still pressed
       this->sleep();
   }
+  
+  //enable watchdog to fix random freezes
+  wdt_enable(WDTO_4S);
 }
 
 void VarioPower::updateFW(void) {
@@ -127,6 +130,7 @@ void VarioPower::update(void) {
   static uint32_t nextEvent;
   static uint32_t lastButtonUnpressed;
   uint32_t now = millis();
+  wdt_reset();
 
   //check button pin
   if (!(PIND & bit(BUTTONPIN))) {
