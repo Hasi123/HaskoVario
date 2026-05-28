@@ -36,7 +36,7 @@
 /*        !!! of these 3 settings.       !!!          */
 #define VARIOMETER_MODEL "HaskoVarioGPS"
 #define VARIOMETER_PILOT_NAME "David Hasko"
-#define VARIOMETER_GLIDER_NAME "SUPAIR Wild"
+#define VARIOMETER_GLIDER_NAME "OZONE Zeolite 2"
 /*        !!! For the others compilation !!!          */
 /*------- !!! is sufficient.             !!! ---------*/
 
