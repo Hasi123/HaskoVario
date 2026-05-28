@@ -5,6 +5,7 @@
 #include <EEPROM.h>
 #include <toneAC.h>
 #include "variance.h"
+#include <avr/wdt.h>
 
 variance var;
 MPU6050 mpu;
@@ -59,6 +60,8 @@ bool MPU6050::calibrate(void) {
   if ((accelData[2] > -7000) || moving) { //also up side down?
     return false;
   }
+  
+  wdt_disable();
   
   detachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN));
   delay(10); //wait for last I2C interrupt to end
