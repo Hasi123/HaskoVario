@@ -121,6 +121,7 @@ void VarioPower::updateFW(void) {
   if (!(PIND & bit(BUTTONPIN))) {
     cli();
     SP = RAMEND;
+    wdt_disable();
     void* bootloader = (void*)0x7800;
     goto *bootloader;
   }
