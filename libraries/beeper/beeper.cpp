@@ -94,6 +94,13 @@ void beeper::setBeepParameters(double velocity) {
     break;
   }
 
+  /* ensure frequency is positive and within audible range */
+  if (beepFreq < 100.0 && beepFreq != 0.0) {
+    beepFreq = 100.0;
+  } else if (beepFreq > 5000.0) {
+    beepFreq = 5000.0;
+  }
+
 }
 
 

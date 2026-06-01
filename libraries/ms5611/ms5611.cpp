@@ -8,7 +8,9 @@ uint8_t volatile ms5611::msCurrentType = 0;
 //uint32_t volatile ms5611::msMeasure;
 uint32_t volatile ms5611::d1;
 uint32_t volatile ms5611::d2;
-float ms5611::msCoeffs[6] = {32768L, 65536L, 3.90625E-3, 7.8125E-3, 256, 1.1920928955E-7};
+// Base coefficients from MS5611 datasheet (must not be modified)
+static const float msCoeffsBase[6] = {32768L, 65536L, 3.90625E-3, 7.8125E-3, 256, 1.1920928955E-7};
+float ms5611::msCoeffs[6];
 #ifdef MS5611_USE_TIMER
 bool ms5611::msReady = 0;
 #endif
@@ -56,7 +58,7 @@ void ms5611::init(void) {
   //read factory calibrations from PROM
   //multiply with constant values from datasheet
   for (uint8_t reg = 0; reg < 6; reg++) {
-    msCoeffs[reg] *= (uint16_t)I2C::readWord(msAddr, MS5611_READ_PROM + (reg * 2));
+    msCoeffs[reg] = msCoeffsBase[reg] * (uint16_t)I2C::readWord(msAddr, MS5611_READ_PROM + (reg * 2));
   }
 
   //setup timer 2 interrupt

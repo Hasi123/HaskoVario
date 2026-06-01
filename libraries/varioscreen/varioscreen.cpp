@@ -569,7 +569,8 @@ void ScreenElapsedTime::setCurrentTime(int8_t* currentTime) {
   for(uint8_t i = 0; i<3; i++) {
     v = (currentTime[i] - baseTime[i]) - rem;
     if( v < 0 ) {
-      v += 60;
+      /* hours use 24-hour rollover, minutes/seconds use 60 */
+      v += (i == 2) ? 24 : 60;
       rem = 1;
     } else {
       rem = 0;

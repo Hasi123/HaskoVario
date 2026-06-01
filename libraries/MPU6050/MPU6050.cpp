@@ -310,7 +310,7 @@ char MPU6050::getFIFO(void) {
   unsigned char fifoData[MPU6050_FIFO_LENGTH];
   unsigned short fifo_count = I2C::readWord(mpuAddr, MPU6050_RA_FIFO_COUNTH);
 
-  if (fifo_count != MPU6050_FIFO_LENGTH) { //reset FIFO if more data than 1 packet
+  if (fifo_count < MPU6050_FIFO_LENGTH) { //not enough data for a complete packet
     resetFIFO();
     return -1;
   }

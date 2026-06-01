@@ -134,6 +134,9 @@ template<unsigned period, int8_t count>
 double FlightHistory<period, count>::getClimbRate(int8_t periodCount) {
 
   haveClimbRate = false;
+  if (periodCount <= 0) {
+    return 0.0;  // Invalid period count
+  }
   return computeClimbDelta(periodCount)*1000.0/(double)((unsigned)periodCount * period); //max 65 seconds (unsigned max) 
 }
 
@@ -209,7 +212,11 @@ double SpeedFlightHistory<period, count, speedPeriodCount>::getGlideRatio(double
     sumCount++;
   }
 
-  return -distance*((double)period/3600.0)/computeClimbDelta(); //speed is in km/h and period in ms, so we get m
+  double climbDelta = computeClimbDelta();
+  if (climbDelta == 0.0) {
+    return 0.0;  // No altitude change, glide ratio is undefined
+  }
+  return -distance*((double)period/3600.0)/climbDelta; //speed is in km/h and period in ms, so we get m
  }
 
 #endif

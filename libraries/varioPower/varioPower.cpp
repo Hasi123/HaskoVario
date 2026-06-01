@@ -112,7 +112,7 @@ void VarioPower::init(void) {
       this->sleep();
   }
   
-  //enable watchdog to fix random freezes
+  //enable watchdog - use 4s timeout for initialization safety
   wdt_enable(WDTO_4S);
 }
 
@@ -128,8 +128,8 @@ void VarioPower::updateFW(void) {
 }
 
 void VarioPower::update(void) {
-  static uint32_t nextEvent;
-  static uint32_t lastButtonUnpressed;
+  static uint32_t nextEvent = 0;
+  static uint32_t lastButtonUnpressed = millis();
   uint32_t now = millis();
   wdt_reset();
 
