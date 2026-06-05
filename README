@@ -1,47 +1,47 @@
-#############################
-#                           #
-#         GNUVario          #
-#                           #
-# The open source and open  #
-# hardware variometer       #
-#############################
+# HaskoVario
 
-For complete documentation and help see the GNUVario website :
-https://prunkdump.github.io/GNUVario
+**Open-source Arduino variometer for paragliding/hang-gliding.**
 
-Or you can contact me at :
-prunkdump@gmail.com
+This is a fork of [GNUVario](https://github.com/prunkdump/GNUVario) by Baptiste PELLEGRIN, modified to run on a **custom PCB** that omits the screen and Bluetooth module. The focus is on a minimal, reliable bare-bones variometer with audio feedback, GPS, and SD card flight logging.
 
-Features :
----------
-- High precision altitude with improved ms5611 code
-- High precision vertical velocity with InvenSense accelerometer (optionnal)
-- Screen display with Nokia 5110 : altitude, vertical speed, ground speed, glide ratio and more (optionnal)
-- Ground speed and glide ratio with GPS device (optionnal)
-- Flight tracking with SD card reader and GPS (optionnal)
-- Bluetooth communication with external device (optionnal)
-- Battery level (optionnal)
+## Features
 
+- High-precision barometric altitude (MS5611) fused with IMU vertical acceleration (MPU6050) via a Kalman filter
+- Real-time climb/sink audio feedback (buzzer via toneAC)
+- GPS ground speed, glide ratio, and barometric altitude calibration
+- IGC flight logging to SD card (FAT16)
+- SD card-based firmware updates (no USB cable needed in the field)
+- Low-battery monitoring and automatic shutdown
+- Long-press power on/off with watchdog-based reset
 
-Where to start :
-----------------
+## Custom PCB
 
-If you are new on the Arduino community. Buy :
-- a breadboard
-- an Arduino Board (Arduino Nano is good to start)
-- a ms5611 + mpu9250 module
-- a buzzer (with a 120 Ohms resistor)
+This fork is designed for a PCB that strips out the optional Nokia 5110 screen and Bluetooth module from the original GNUVario design — just the core sensors, GPS, buzzer, SD card, and battery management.
 
-And learn to compile the code :
-https://prunkdump.github.io/GNUVario/code.html
+## Custom Bootloader
 
-And to build the variometer on the breadboard :
-https://prunkdump.github.io/GNUVario/assets/schematic.pdf
-https://prunkdump.github.io/GNUVario/schematics.html
+The variometer uses a custom Optiboot variant (forked from the original [GNUVario bootloader](https://github.com/prunkdump/GNUVario)) that adds SD card firmware update capability:
 
+**[optiboot-sdcard](https://github.com/Hasi123/optiboot-sdcard)** — A modified Optiboot bootloader that reads `FIRM.HEX` from a FAT16 SD card and flashes it to the MCU on startup. This allows updating the firmware in the field without a USB programmer.
 
-If you are more experienced :
------------------------------
+## Firmware Update Instructions
 
-Check curefully all the pages of the website :
-https://prunkdump.github.io/GNUVario 
+1. Remove the SD card from the vario and connect it to your PC.
+2. Format the SD card as **FAT** (not FAT32). Note: FAT only supports partitions up to 1 GB.
+3. Download the latest `FIRM.HEX` from the [Releases page](https://github.com/Hasi123/HaskoVario/releases).
+4. Copy `FIRM.HEX` to the root of the SD card.
+5. Safely eject the SD card and insert it into the vario.
+6. Power on the vario and **hold the power button** until the boot-up sound finishes.
+7. (Optional) Delete `FIRM.HEX` from the SD card after the update to avoid re-flashing on every boot.
+
+## Where to Start
+
+- Read the code documentation: [HOW_IT_WORKS.md](HOW_IT_WORKS.md)
+- View the hardware schematic: [schematic.pdf](schematic.pdf)
+- Configure your build in `libraries/VarioSettings/VarioSettings.h`
+- Flash the custom bootloader first, then use the SD card for firmware updates
+
+## Credits
+
+- **Baptiste PELLEGRIN** — Original [GNUVario](https://github.com/prunkdump/GNUVario) project and bootloader. All core sensor, audio, GPS, Kalman filter, and bootloader code is his work.
+- **David Hasko** — Fork maintainer, custom PCB design, bootloader integration.
