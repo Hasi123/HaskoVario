@@ -136,6 +136,11 @@
                               0x79, 0x32, 0x35, 0x36, 0x42, 0x69, 0x74, 0x73, \
                               0x53, 0x68, 0x61, 0x72, 0x65, 0x64, 0x21, 0x21 }
 
+/* Send GNSS configuration commands at boot via a spare pin */
+/* Comment out to disable. Pin must be wired to GNSS module RX. */
+#define HAVE_GNSS_CONFIG
+#define GNSS_CFG_TX_PIN 16  /* PC2 / A2 */
+
 /* Set the pin used for SD card module */
 #define SDCARD_CS_PIN 8
 

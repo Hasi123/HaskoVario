@@ -42,6 +42,9 @@
 #include <hmac_sha256.h>
 #include <igc_key.h>
 #endif
+#ifdef HAVE_GNSS_CONFIG
+#include <wserial.h>
+#endif
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 /*!!            !!! WARNING  !!!              !!*/
@@ -119,6 +122,15 @@ LK8Sentence bluetoothNMEA;
 unsigned long lastVarioSentenceTimestamp = 0;
 #endif  //HAVE_BLUETOOTH
 
+#ifdef HAVE_GNSS_CONFIG
+/* GNSS config commands sent at boot on a separate pin (PC2/A2) */
+static WSerial gnssCfg(GNSS_CFG_TX_PIN);
+static const char gnssCfgCmds[] PROGMEM =
+  "$PQTXT,W,0,1*23\r\n"
+  "$PQFLP,W,1,1*20\r\n"
+  "$PQ1PPS,W,0,0*18\r\n"
+  "$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n";
+#endif
 
 /*-----------------*/
 /*      SETUP      */
@@ -155,6 +167,16 @@ void setup() {
   serialNmea.begin(GPS_BLUETOOTH_BAUDS, false);
 #endif  //HAVE_GPS
 #endif  //defined(HAVE_BLUETOOTH) || defined(HAVE_GPS)
+
+#ifdef HAVE_GNSS_CONFIG
+  gnssCfg.begin(GPS_BLUETOOTH_BAUDS);
+  const char* p = gnssCfgCmds;
+  while (true) {
+    char c = pgm_read_byte(p++);
+    if (!c) break;
+    gnssCfg.write(c);
+  }
+#endif
 
   /**************************/
   /* init Two Wires devices */
