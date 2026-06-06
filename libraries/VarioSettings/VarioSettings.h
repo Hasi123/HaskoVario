@@ -149,6 +149,18 @@
 #define HAVE_BLUETOOTH
 //#define HAVE_VOLTAGE_DIVISOR
 
+/* IGC file security (G record with HMAC-SHA256)                    */
+/* When enabled, the IGC file gets a G record with the HMAC-SHA256  */
+/* signature over all protected records. See HMAC_IMPL_PLAN.md.     */
+//#define HAVE_IGC_SECURITY
+
+/* HMAC-SHA256 key for IGC G record (32 bytes = 256 bits)           */
+/* Shared per model. Change to invalidate all existing flight logs.  */
+#define VARIOMETER_HMAC_KEY { 0x48, 0x61, 0x73, 0x6B, 0x6F, 0x56, 0x61, 0x72, \
+                              0x69, 0x6F, 0x48, 0x4D, 0x41, 0x43, 0x4B, 0x65, \
+                              0x79, 0x32, 0x35, 0x36, 0x42, 0x69, 0x74, 0x73, \
+                              0x53, 0x68, 0x61, 0x72, 0x65, 0x64, 0x21, 0x21 }
+
 /* Set the pins used for Screen and SD card modules */
 #define VARIOSCREEN_DC_PIN 6
 #define VARIOSCREEN_CS_PIN 7
