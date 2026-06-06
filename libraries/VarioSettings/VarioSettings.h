@@ -64,15 +64,6 @@
 //#define VARIOMETER_ENABLE_NEAR_CLIMBING_BEEP
 
 
-/*******************/
-/* Screen behavior */
-/*******************/
-
-/* the duration of the two screen pages in milliseconds */
-#define VARIOMETER_BASE_PAGE_DURATION 10000
-#define VARIOMETER_ALTERNATE_PAGE_DURATION 2000
-
-
 /********************/
 /* Measure behavior */
 /********************/
@@ -85,18 +76,6 @@
 #define FLIGHT_START_VARIO_LOW_THRESHOLD (-0.5)
 #define FLIGHT_START_VARIO_HIGH_THRESHOLD 0.5
 #define FLIGHT_START_MIN_SPEED 10.0
-
-/* Display integrated climb rate or instantaneous values if disabled     */
-/* If enabled set the integration time in ms.                            */
-/* ! Climb rate integration time must not be more than glide ratio one ! */
-//#define VARIOMETER_DISPLAY_INTEGRATED_CLIMB_RATE
-#define VARIOMETER_CLIMB_RATE_INTEGRATION_TIME 2000
-#define VARIOMETER_INTEGRATED_CLIMB_RATE_DISPLAY_FREQ 2.0
-
-/* Glide ratio display parameters  */
-/* Integration time in ms.         */
-#define VARIOMETER_GLIDE_RATIO_INTEGRATION_TIME 15000
-
 
 /* Set the GPS precision needed to use the GPS altitude value  */
 /* to calibrate the barometric altitude.                       */
@@ -140,7 +119,6 @@
 /* what you embed in the variometer   */ 
 #define HAVE_SPEAKER
 #define HAVE_ACCELEROMETER
-//#define HAVE_SCREEN
 #define HAVE_GPS
 #define HAVE_SDCARD
 #define HAVE_BLUETOOTH
@@ -148,7 +126,7 @@
 
 /* IGC file security (G record with HMAC-SHA256)                    */
 /* When enabled, the IGC file gets a G record with the HMAC-SHA256  */
-/* signature over all protected records. See HMAC_IMPL_PLAN.md.     */
+/* signature over all protected records.                             */
 #define HAVE_IGC_SECURITY
 
 /* HMAC-SHA256 key for IGC G record (32 bytes = 256 bits)           */
@@ -158,17 +136,11 @@
                               0x79, 0x32, 0x35, 0x36, 0x42, 0x69, 0x74, 0x73, \
                               0x53, 0x68, 0x61, 0x72, 0x65, 0x64, 0x21, 0x21 }
 
-/* Set the pins used for Screen and SD card modules */
-#define VARIOSCREEN_DC_PIN 6
-#define VARIOSCREEN_CS_PIN 7
-#define VARIOSCREEN_RST_PIN 14
+/* Set the pin used for SD card module */
 #define SDCARD_CS_PIN 8
 
 /* time needed to power on all the devices */
 #define VARIOMETER_POWER_ON_DELAY 2000
-
-/* The screen contrast */
-#define VARIOSCREEN_CONTRAST 60
 
 /* The bauds rate used by the GPS and Bluetooth modules. */
 /* GPS and bluetooth need to have the same bauds rate.   */

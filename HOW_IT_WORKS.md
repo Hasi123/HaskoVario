@@ -13,7 +13,6 @@ HaskoVario/
 │   ├── ms5611/                   # MS5611 barometric pressure sensor driver
 │   ├── MPU6050/                  # MPU6050 IMU + DMP firmware loader
 │   ├── beeper/                   # Audio feedback (climb/sink tones)
-│   ├── FlightHistory/            # Circular buffer for climb rate & glide ratio
 │   ├── IntTW/                    # Interrupt-driven I2C (TWI) master library
 │   ├── NmeaParser/               # GPS NMEA sentence parser ($RMC/$GGA)
 │   ├── SerialNmea/               # Interrupt-driven UART with NMEA filtering
@@ -22,9 +21,7 @@ HaskoVario/
 │   ├── varioPower/               # Power management (LDO, button, watchdog, low-bat)
 │   ├── marioSounds/              # Startup/shutdown/low-battery melodies
 │   ├── LPtoneAC/                 # High-quality push-pull tone generation (timer1)
-│   ├── wserial/                  # Lightweight write-only software serial
-│   ├── igcrypto/                 # HMAC-SHA256 IGC G record signing
-│   └── dmp_compress/             # DMP firmware compression utilities
+│   └── igcrypto/                 # HMAC-SHA256 IGC G record signing
 ├── tools/                        # PC-side utilities (igc_verify.py)
 ├── IGCs/                         # Sample signed flight logs
 └── schematic.pdf                 # Hardware schematic
@@ -36,7 +33,7 @@ All hardware configuration happens at compile time in `libraries/VarioSettings/V
 
 | Category | Examples |
 |----------|----------|
-| **Feature flags** | `HAVE_SPEAKER`, `HAVE_ACCELEROMETER`, `HAVE_SCREEN`, `HAVE_GPS`, `HAVE_SDCARD`, `HAVE_BLUETOOTH`, `HAVE_VOLTAGE_DIVISOR`, `HAVE_IGC_SECURITY` |
+| **Feature flags** | `HAVE_SPEAKER`, `HAVE_ACCELEROMETER`, `HAVE_GPS`, `HAVE_SDCARD`, `HAVE_BLUETOOTH`, `HAVE_VOLTAGE_DIVISOR`, `HAVE_IGC_SECURITY` |
 | **IGC header fields** | `VARIOMETER_MODEL`, `VARIOMETER_PILOT_NAME`, `VARIOMETER_GLIDER_NAME`, `VARIOMETER_GLIDER_ID`, `VARIOMETER_FIRMWARE_VERSION`, `VARIOMETER_HARDWARE_VERSION` |
 | **IGC security** | `VARIOMETER_HMAC_KEY` (32-byte HMAC-SHA256 key) |
 | **Beep thresholds** | `VARIOMETER_SINKING_THRESHOLD` (-0.3 m/s), `VARIOMETER_CLIMBING_THRESHOLD` (+0.8 m/s), `VARIOMETER_NEAR_CLIMBING_SENSITIVITY` |
@@ -60,19 +57,18 @@ The variometer transitions through four states:
 ### `setup()` — Initialization Sequence
 
 1. **`varioPower.init()`** — Power on LDO, check button for shutdown, start watchdog
-2. **SPI initialization** — Enable CS lines for SD card and screen
+2. **SPI initialization** — Enable CS line for SD card
 3. **SD card** — `file.init()` (if HAVE_SDCARD + HAVE_GPS)
-4. **Screen** — `screen.begin(VARIOSCREEN_CONTRAST)`
-5. **GPS / Bluetooth UART** — `serialNmea.begin(GPS_BLUETOOTH_BAUDS, ...)`
-6. **I2C** — `I2C::begin()` initializes TWI hardware and timer interrupts
-7. **MS5611** — `ms.init()` resets sensor, reads PROM calibration
-8. **MPU6050** — `mpu.init()` loads DMP firmware, configures FIFO
-9. **MPU6050 interrupt** — `attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING)`
-10. **Boot sound** — `marioSounds.bootUp()`
-11. **Firmware update check** — `varioPower.updateFW()` checks for FIRM.HEX on SD card
-12. **Calibration** — `mpu.calibrate()` if held upside-down
-13. **Kalman filter init** — Wait for first sensor data, `kalmanvert.init()`
-14. **History init** — `history.init(firstAlti, millis())`
+4. **GPS / Bluetooth UART** — `serialNmea.begin(GPS_BLUETOOTH_BAUDS, ...)`
+5. **I2C** — `I2C::begin()` initializes TWI hardware and timer interrupts
+6. **MS5611** — `ms.init()` resets sensor, reads PROM calibration
+7. **MPU6050** — `mpu.init()` loads DMP firmware, configures FIFO
+8. **MPU6050 interrupt** — `attachInterrupt(digitalPinToInterrupt(MPU6050_INTERRUPT_PIN), getSensors, RISING)`
+9. **Boot sound** — `marioSounds.bootUp()`
+10. **Firmware update check** — `varioPower.updateFW()` checks for FIRM.HEX on SD card
+11. **Calibration** — `mpu.calibrate()` if held upside-down
+12. **Kalman filter init** — Wait for first sensor data, `kalmanvert.init()`
+13. **History init** — `history.init(firstAlti, millis())`
 
 ### `loop()` — Main Execution Cycle
 
@@ -95,14 +91,11 @@ I2C::newData:
 | Component | Conditions | What it does |
 |-----------|-----------|--------------|
 | **History** | Always (`HAVE_GPS` or integrated climb rate) | `history.setAlti(calibratedPosition, millis())` |
-| **Screen digits** | `HAVE_SCREEN` | Updates altitude and vario digit displays |
 | **VarioPower** | Always | `varioPower.update()` — watchdog reset, button check, low-voltage monitoring |
 | **Beeper** | `HAVE_SPEAKER` | `beeper.update()` — drives toneAC based on current velocity |
 | **Bluetooth** | `HAVE_BLUETOOTH` | Sends vario NMEA sentence every `VARIOMETER_SENTENCE_DELAY` ms |
 | **GPS** | `HAVE_GPS` | Parses RMC/GGA sentences, calibrates baro, detects flight start |
 | **SD card (IGC)** | `HAVE_SDCARD` + `HAVE_GPS` | Writes IGC B-records from GGA data |
-| **Low-freq screen** | `HAVE_SCREEN` | Updates time, elapsed time, satellite count, battery (on page transitions) |
-| **Screen scheduler** | `HAVE_SCREEN` | `varioScreen.displayStep()` — renders visible page elements |
 
 ## Sensor Pipeline: `I2CHelper` + `IntTW`
 
@@ -150,17 +143,6 @@ The beeper maps vertical velocity to four beep zones:
 
 The climbing beep pattern cycles every 1.0 vertical meter (duration = 1.0 / climbRate) for intuitive audio altitude feedback.
 
-## Display: `varioscreen`
-
-The Nokia 5110 (PCD8544) screen uses a **screen object model**:
-
-- **`VarioScreen`** — Low-level PCD8544 SPI driver
-- **`VarioScreenObject`** — Abstract base with `display()` / `update()` / `reset()`
-- **`ScreenDigit`** — Numeric display using stabilized `FPSDigit`
-- **Unit objects** — `MSUnit` ("m/s"), `MUnit` ("m"), `KMHUnit` ("km/h"), `GRUnit` (glide ratio)
-- **Status objects** — `BATLevel` (battery bar), `SATLevel` (satellite bar), `ScreenTime` (HH:MM:SS), `ScreenElapsedTime`, `ScreenMuteIndicator`
-- **`ScreenScheduler`** — Page manager. Base page (page 0) shows altitude + vario. Alternate page (page 1, only with GPS) shows time + speed + glide ratio + satellite count.
-
 ## GPS / Bluetooth Serial: `SerialNmea`
 
 **`SerialNmea`** is an interrupt-driven UART manager that shares the hardware serial port between GPS (RX) and Bluetooth (TX):
@@ -179,10 +161,7 @@ SerialNmea (ISR, validates NMEA checksums)
 NmeaParser (extracts time, date, altitude, speed, satellite count, HDOP)
     ↓
 ├── kalmanvert.calibratePosition(gpsAlti) — when HDOP < threshold
-├── screenTime.setTime(nmeaParser.time)
-├── ScreenElapsedTime / SATLevel updates
-├── SpeedFlightHistory::getGlideRatio(speed, timestamp)
-└── IGC file creation (date → filename: DDMMYY00.IGC, DDMMYY01.IGC, ...)
+├── IGC file creation (date → filename: DDMMYY00.IGC, DDMMYY01.IGC, ...)
 ```
 
 ## IGC Flight Logging (SD Card)
