@@ -152,7 +152,7 @@
 /* IGC file security (G record with HMAC-SHA256)                    */
 /* When enabled, the IGC file gets a G record with the HMAC-SHA256  */
 /* signature over all protected records. See HMAC_IMPL_PLAN.md.     */
-//#define HAVE_IGC_SECURITY
+#define HAVE_IGC_SECURITY
 
 /* HMAC-SHA256 key for IGC G record (32 bytes = 256 bits)           */
 /* Shared per model. Change to invalidate all existing flight logs.  */
