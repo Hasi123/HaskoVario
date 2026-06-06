@@ -41,6 +41,10 @@
 #include <FlightHistory.h>
 #include <marioSounds.h>
 #include <varioPower.h>
+#ifdef HAVE_IGC_SECURITY
+#include <hmac_sha256.h>
+#include <igc_key.h>
+#endif
 
 /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 /*!!            !!! WARNING  !!!              !!*/
@@ -230,6 +234,11 @@ IGCSentence igc;
 #define SDCARD_STATE_ERROR -1
 int8_t sdcardState = SDCARD_STATE_INITIAL;
 
+#ifdef HAVE_IGC_SECURITY
+HMACSha256 igcHmac;
+bool igcHmacActive = false;
+#endif
+
 #endif  //HAVE_SDCARD
 
 #endif  //HAVE_GPS
@@ -335,6 +344,9 @@ void setup() {
 
 #if defined(HAVE_SDCARD) && defined(HAVE_GPS)
 void createSDCardTrackFile(void);
+#ifdef HAVE_IGC_SECURITY
+void finalizeIGCFile(void);
+#endif
 #endif  //defined(HAVE_SDCARD) && defined(HAVE_GPS)
 void enableflightStartComponents(void);
 
@@ -408,6 +420,16 @@ void loop() {
   /*********************/
   varioPower.update();
 
+  /********************/
+  /* check for shutdown */
+  /********************/
+  if (varioPower.isShutdownPending()) {
+#if defined(HAVE_SDCARD) && defined(HAVE_GPS) && defined(HAVE_IGC_SECURITY)
+    finalizeIGCFile();
+#endif
+    varioPower.completeShutdown();
+  }
+
   /*****************/
   /* update beeper */
   /*****************/
@@ -463,10 +485,14 @@ void loop() {
       /* start to write IGC B frames */
       if (sdcardState == SDCARD_STATE_READY) {
 #ifdef VARIOMETER_SDCARD_SEND_CALIBRATED_ALTITUDE
-        file.write(igc.begin(kalmanvert.getCalibratedPosition()));
+        uint8_t b = igc.begin(kalmanvert.getCalibratedPosition());
 #else
-        file.write(igc.begin(kalmanvert.getPosition()));
+        uint8_t b = igc.begin(kalmanvert.getPosition());
 #endif
+#ifdef HAVE_IGC_SECURITY
+        if (igcHmacActive) igcHmac.write(b);
+#endif
+        file.write(b);
       }
 #endif  //HAVE_SDCARD
     }
@@ -484,7 +510,11 @@ void loop() {
         if (sdcardState == SDCARD_STATE_READY && nmeaParser.isParsingGGA()) {
           igc.feed(c);
           while (igc.available()) {
-            file.write(igc.get());
+            uint8_t bc = igc.get();
+#ifdef HAVE_IGC_SECURITY
+            if (igcHmacActive) igcHmac.write(bc);
+#endif
+            file.write(bc);
           }
         }
 #endif  //HAVE_SDCARD
@@ -638,7 +668,7 @@ void createSDCardTrackFile(void) {
     file.init();
 
     /* build date : convert from DDMMYY to YYMMDD */
-    uint8_t dateChar[8];  //two bytes are used for incrementing number on filename
+    uint8_t dateChar[8] = {0};  //last 2 bytes are for increment number, filled by begin()
     uint8_t* dateCharP = dateChar;
     uint32_t date = nmeaParser.date;
     for (uint8_t i = 0; i < 3; i++) {
@@ -653,35 +683,95 @@ void createSDCardTrackFile(void) {
     if (file.begin((char*)dateChar, 8) >= 0) {
       sdcardState = SDCARD_STATE_READY;
 
+#ifdef HAVE_IGC_SECURITY
+      uint8_t keyBuf[32];
+      memcpy_P(keyBuf, igcHmacKey, 32);
+      igcHmac.begin(keyBuf, 32);
+      igcHmacActive = true;
+#endif
+
       /* write the header */
       int16_t datePos = header.begin();
       if (datePos >= 0) {
         while (datePos) {
-          file.write(header.get());
+          uint8_t b = header.get();
+#ifdef HAVE_IGC_SECURITY
+          igcHmac.write(b);
+#endif
+          file.write(b);
           datePos--;
         }
 
         /* write date : DDMMYY */
         uint8_t* dateCharP = &dateChar[4];
         for (int i = 0; i < 3; i++) {
-          file.write(dateCharP[0]);
-          file.write(dateCharP[1]);
+          uint8_t d0 = dateCharP[0];
+          uint8_t d1 = dateCharP[1];
+#ifdef HAVE_IGC_SECURITY
+          igcHmac.write(d0);
+          igcHmac.write(d1);
+#endif
+          file.write(d0);
+          file.write(d1);
           header.get();
           header.get();
           dateCharP -= 2;
         }
 
         while (header.available()) {
-          file.write(header.get());
+          uint8_t b = header.get();
+#ifdef HAVE_IGC_SECURITY
+          igcHmac.write(b);
+#endif
+          file.write(b);
         }
       }
     } else {
       sdcardState = SDCARD_STATE_ERROR;  //avoid retry
+#ifdef HAVE_IGC_SECURITY
+      igcHmacActive = false;
+#endif
     }
   }
 }
 #endif  //defined(HAVE_SDCARD) && defined(HAVE_GPS)
 
+
+#if defined(HAVE_SDCARD) && defined(HAVE_GPS) && defined(HAVE_IGC_SECURITY)
+static const char b64chars[65] PROGMEM = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static void base64Encode20(const uint8_t* src, char* dst) {
+  for (uint8_t i = 0; i < 6; i++) {
+    uint32_t g = ((uint32_t)src[0] << 16) | ((uint32_t)src[1] << 8) | src[2];
+    dst[0] = pgm_read_byte(&b64chars[(g >> 18) & 0x3F]);
+    dst[1] = pgm_read_byte(&b64chars[(g >> 12) & 0x3F]);
+    dst[2] = pgm_read_byte(&b64chars[(g >> 6) & 0x3F]);
+    dst[3] = pgm_read_byte(&b64chars[g & 0x3F]);
+    src += 3; dst += 4;
+  }
+  uint32_t g = ((uint32_t)src[0] << 16) | ((uint32_t)src[1] << 8);
+  dst[0] = pgm_read_byte(&b64chars[(g >> 18) & 0x3F]);
+  dst[1] = pgm_read_byte(&b64chars[(g >> 12) & 0x3F]);
+  dst[2] = pgm_read_byte(&b64chars[(g >> 6) & 0x3F]);
+  dst[3] = '=';
+}
+
+void finalizeIGCFile(void) {
+  if (!igcHmacActive) return;
+  igcHmac.finalize();
+  const uint8_t* d = igcHmac.digest();
+  char line[31];
+  line[0] = 'G';
+  base64Encode20(d, line + 1);
+  line[29] = '\r';
+  line[30] = '\n';
+  for (uint8_t i = 0; i < 31; i++) {
+    file.write((uint8_t)line[i]);
+  }
+  file.sync();
+  igcHmacActive = false;
+}
+#endif
 
 
 void enableflightStartComponents(void) {
