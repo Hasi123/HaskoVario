@@ -119,6 +119,12 @@ The crypto components live in `libraries/igcrypto/`:
 | `hmac_sha256.h/.cpp` | HMAC-SHA256 wrapper |
 | `igc_key.h` | Key accessor |
 
+The IGC header (pilot name, glider type, model, etc.) is stored as a
+single PROGMEM string assembled at compile time from the values in
+`VarioSettings.h`. At file creation, the header is written byte-by-byte
+to the IGC file via `pgm_read_byte()`, with the placeholder date
+overwritten by the actual GPS date.
+
 The integration in `variometer/variometer.ino` feeds the HMAC engine
 as bytes are written to the IGC file: header bytes at file creation, and
 B-record bytes as each GPS sentence is parsed. On power-off, the final
@@ -128,13 +134,28 @@ A **two-phase shutdown** (`varioPower::shutdownPending` /
 `isShutdownPending()` / `completeShutdown()`) ensures the G record is
 written and flushed before power is cut.
 
+### Configuration
+
+Change the pilot name, glider type, or model in
+`libraries/VarioSettings/VarioSettings.h`:
+
+```cpp
+#define VARIOMETER_MODEL "HaskoVarioGPS"
+#define VARIOMETER_PILOT_NAME "David Hasko"
+#define VARIOMETER_GLIDER_NAME "OZONE Zeolite 2"
+```
+
+After changing these values, recompile and flash. The IGC header in
+PROGMEM will be rebuilt automatically.
+
 ## Where to Start
 
 - Read the code documentation: [HOW_IT_WORKS.md](HOW_IT_WORKS.md)
 - Design and crypto analysis: [CRYPTO_ANALYSIS.md](CRYPTO_ANALYSIS.md)
 - HMAC implementation plan: [HMAC_IMPL_PLAN.md](HMAC_IMPL_PLAN.md)
 - View the hardware schematic: [schematic.pdf](schematic.pdf)
-- Configure your build in `libraries/VarioSettings/VarioSettings.h`
+- IGC header and crypto are in `libraries/GpsSentences/IGCSentence.cpp`
+  and `libraries/igcrypto/`; configure in `VarioSettings.h`
 - Flash the custom bootloader first, then use the SD card for firmware
   updates
 

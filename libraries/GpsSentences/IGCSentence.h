@@ -23,12 +23,6 @@
 
 #include <Arduino.h>
 
-
-#define IGC_SENTENCE_HEADER_EEPROM_ADDRESS 0x30 
-#define IGC_SENTENCE_HEADER_MAX_SIZE (0x200 - 0x30)
-#define IGC_SENTENCE_EEPROM_TAG 2568
-
-
 #define IGC_SENTENCE_ALTI_SIZE 5
 #define IGC_SENTENCE_TIME_SIZE 6
 #define IGC_SENTENCE_LAT_SIZE 7
@@ -47,6 +41,7 @@ class IGCHeader {
   uint16_t size;
   int addr;
 
+  static const char headerData[] PROGMEM;
 };
 
 

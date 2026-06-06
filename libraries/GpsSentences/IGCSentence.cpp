@@ -21,169 +21,43 @@
 #include <IGCSentence.h>
 
 #include <Arduino.h>
-#include <EEPROM.h>
+#include <VarioSettings.h>
 
 /**************/
 /* IGC header */
 /**************/
 
-const char IGCHeader00[] PROGMEM = "AXXX ";
-// vario model name
-const char IGCHeader02[] PROGMEM = "\r\nHFDTE";
-const char IGCHeader03[] PROGMEM = "010100";
-const char IGCHeader04[] PROGMEM = "\r\nHFPLTPILOTINCHARGE: ";
-//pilot name
-const char IGCHeader06[] PROGMEM = "\r\nHFGTYGLIDERTYPE: ";
-//glider type
-const char IGCHeader08[] PROGMEM = "\r\nHFDTM100GPSDATUM: WGS-1984";
-const char IGCHeader09[] PROGMEM = "\r\nHFFTYFRTYPE: ";
-// vario model name
-const char IGCHeader11[] PROGMEM = "\r\n";
+#define IGC_HEADER_PROGMEM_STRING \
+  "AXXX " VARIOMETER_MODEL "\r\nHFDTE010100\r\n" \
+  "HFPLTPILOTINCHARGE: " VARIOMETER_PILOT_NAME "\r\n" \
+  "HFGTYGLIDERTYPE: " VARIOMETER_GLIDER_NAME "\r\n" \
+  "HFDTM100GPSDATUM: WGS-1984\r\n" \
+  "HFFTYFRTYPE: " VARIOMETER_MODEL "\r\n"
 
-#define HEADER_STRING_COUNT 12
-const char* headerStrings[] = {IGCHeader00,
-			      NULL,
-			      IGCHeader02,
-			      IGCHeader03,
-			      IGCHeader04,
-			      NULL,
-			      IGCHeader06,
-			      NULL,
-			      IGCHeader08,
-			      IGCHeader09,
-			      NULL,
-                              IGCHeader11};
-
-
-bool IGCHeader::saveParams(const char* model, const char* pilot, const char* glider) {
-
-  /******************************/
-  /* build and check the header */
-  /******************************/
-  
-  /* build the list of string */
-  headerStrings[1] = model;
-  headerStrings[5] = pilot;
-  headerStrings[7] = glider;
-  headerStrings[10] = model;
-
-  /* compute the address of date */
-  uint16_t datePos;
-  
-  uint16_t pos = 0;
-  uint16_t stringPos = 0;
-  uint16_t stringIdx = 0;
-
-  while( stringIdx < 3 ) {
-
-    /* next string ? */
-    if( pgm_read_byte_near(headerStrings[stringIdx] + stringPos) == '\0' ) {
-      stringIdx++;
-      stringPos = 0;
-    }
-
-    /* else count */
-    else {
-      pos++;
-      stringPos++;
-    }
-  }
-
-  datePos = pos;
-
-  /* compute total size */
-  uint16_t totalSize;
-  
-  while( stringIdx < HEADER_STRING_COUNT ) {
-    
-    /* next string ? */
-    if( pgm_read_byte_near(headerStrings[stringIdx] + stringPos) == '\0' ) {
-      stringIdx++;
-      stringPos = 0;
-    }
-
-    /* else count */
-    else {
-      pos++;
-      stringPos++;
-    }
-  }
-
-  totalSize = pos;
-  pos += 6; //tag + save totalSize + save datePos 
-  if( pos > IGC_SENTENCE_HEADER_MAX_SIZE ) {
-    return false;
-  }
-
-  /******************/
-  /* save to EEPROM */
-  /******************/
-  int eepromAddress = IGC_SENTENCE_HEADER_EEPROM_ADDRESS;
-
-  uint16_t val[3];
-  uint8_t* valBuffer = (uint8_t*)((void*)val);
-
-  /* save needed values */
-  val[0] = IGC_SENTENCE_EEPROM_TAG;
-  val[1] = totalSize;
-  val[2] = datePos;
-
-  /* save to eeprom */
-  for( int i = 0; i<6; i++) {
-    EEPROM.update(eepromAddress, valBuffer[i]);
-    eepromAddress++;
-  }
-  
-  /* write the header */
-  stringPos = 0;
-  stringIdx = 0;
-  
-  while( stringIdx < HEADER_STRING_COUNT ) {
-
-    uint8_t c = pgm_read_byte_near(headerStrings[stringIdx] + stringPos);
-    
-    /* next string ? */
-    if( c == '\0' ) {
-      stringIdx++;
-      stringPos = 0;
-      
-    }
-
-    /* else save char */
-    else {
-      EEPROM.update(eepromAddress, c);
-      eepromAddress++;
-      stringPos++;
-    }
-  }
-
-  return true;
-}
+const char IGCHeader::headerData[] PROGMEM = IGC_HEADER_PROGMEM_STRING;
 
 
 int16_t IGCHeader::begin(void) {
 
-  /* read the three value */
-  addr = IGC_SENTENCE_HEADER_EEPROM_ADDRESS;
-  uint16_t val[3];
-  uint8_t* valBuffer = (uint8_t*)((void*)val);
+  addr = 0;
+  size = sizeof(headerData) - 1;  // exclude null terminator
 
-  for( int i=0; i<6; i++) {
-    valBuffer[i] = EEPROM.read(addr);
-    addr++;
+  /* find date position: search for "\r\nHFDTE" and return position right after */
+  for (int16_t i = 0; i < size - 7; i++) {
+    if (pgm_read_byte_near(headerData + i) == '\r' &&
+        pgm_read_byte_near(headerData + i + 1) == '\n' &&
+        pgm_read_byte_near(headerData + i + 2) == 'H' &&
+        pgm_read_byte_near(headerData + i + 3) == 'F' &&
+        pgm_read_byte_near(headerData + i + 4) == 'D' &&
+        pgm_read_byte_near(headerData + i + 5) == 'T' &&
+        pgm_read_byte_near(headerData + i + 6) == 'E') {
+      return i + 7;
+    }
   }
 
-  /* check the tag */
-  if( val[0] != IGC_SENTENCE_EEPROM_TAG ) {
-    return -1;
-  }
-
-  /* save the size of the header */
-  size = val[1];
-
-  /* return the position of date */
-  return val[2];
+  return -1;  // should never happen
 }
+
 
 bool IGCHeader::available(void) {
 
@@ -193,15 +67,18 @@ bool IGCHeader::available(void) {
 
 uint8_t IGCHeader::get(void) {
 
-  uint8_t c = EEPROM.read(addr);
+  uint8_t c = pgm_read_byte_near(headerData + addr);
   addr++;
   size--;
 
   return c;
 }
-  
-    
- 
+
+
+bool IGCHeader::saveParams(const char* model, const char* pilot, const char* glider) {
+
+  return true;
+}
 
 
 /********************/
