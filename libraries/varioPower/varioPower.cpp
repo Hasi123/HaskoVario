@@ -136,7 +136,7 @@ void VarioPower::update(void) {
   //check button pin
   if (!(PIND & bit(BUTTONPIN))) {
     if (now - lastButtonUnpressed > 1000){
-       this->sleep();
+       shutdownPending = true;
     }
   }
   else{
@@ -155,7 +155,7 @@ void VarioPower::update(void) {
           uint16_t volts = analogRead(A1);
           if (volts < 740) { //3.45V
             if (volts < 708) {
-              this->sleep();  //3.3V
+              shutdownPending = true;  //3.3V
             }
             beepStatus++;
 			beeper::setVolume(0); //silence normal vario beeps
@@ -189,4 +189,13 @@ void VarioPower::update(void) {
     }
     nextEvent += nextAdd;
   }
+}
+
+bool VarioPower::isShutdownPending(void) {
+  return shutdownPending;
+}
+
+void VarioPower::completeShutdown(void) {
+  shutdownPending = false;
+  sleep();
 }

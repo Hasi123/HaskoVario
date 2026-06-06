@@ -37,6 +37,11 @@ class VarioPower
     void init(void);
 	void updateFW(void);
     void update(void);
+    bool isShutdownPending(void);
+    void completeShutdown(void);
+
+  private:
+    bool shutdownPending = false;
 };
 
 #endif

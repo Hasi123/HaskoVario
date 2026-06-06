@@ -248,6 +248,9 @@ void lightfat16::sync() {
 
   /* return to current block */
   data = this->blockSet(fileDataBlock, fileDataPos);
+
+  /* ensure the current data block is committed to SD */
+  this->blockWriteSync();
 }
 
 void lightfat16::fileNewBlock() {
