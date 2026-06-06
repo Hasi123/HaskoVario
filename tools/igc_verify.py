@@ -2,10 +2,10 @@
 """Verify IGC G record (HMAC-SHA256 signature)."""
 
 import argparse
-import base64
 import hashlib
 import hmac
 import os
+import re
 import sys
 
 
@@ -17,63 +17,84 @@ KEY = bytes([
 ])
 
 
-def base64_encode_20(data: bytes) -> str:
-    assert len(data) >= 20
-    raw = data[:20]
-    result = []
-    for i in range(6):
-        g = (raw[i * 3] << 16) | (raw[i * 3 + 1] << 8) | raw[i * 3 + 2]
-        result.append('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[(g >> 18) & 0x3F])
-        result.append('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[(g >> 12) & 0x3F])
-        result.append('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[(g >> 6) & 0x3F])
-        result.append('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[g & 0x3F])
-    g = (raw[18] << 16) | (raw[19] << 8)
-    result.append('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[(g >> 18) & 0x3F])
-    result.append('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[(g >> 12) & 0x3F])
-    result.append('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[(g >> 6) & 0x3F])
-    result.append('=')
-    return ''.join(result)
+def parse_g_records(raw: bytes):
+    """Extract all G record lines from the end of the file.
+    
+    Returns (g_text, g_start) where g_text is the concatenated G record 
+    content (without 'G' prefix or CRLF) and g_start is the byte offset
+    where the first G record line begins.
+    
+    Supports:
+    - Multi-line hex format: G<32 hex chars> per line (spec-compliant)
+    - Single-line base64 format: G<28 base64 chars> (legacy)
+    """
+    lines = raw.split(b'\n')
+    
+    g_content = []
+    g_start = -1
+    
+    for i in range(len(lines) - 1, -1, -1):
+        line = lines[i].rstrip(b'\r\n ')
+        if not line:
+            continue
+        if line.startswith(b'G'):
+            g_content.insert(0, line[1:].decode('ascii'))
+            g_start = sum(len(lines[j]) + 1 for j in range(i))  # +1 for \n
+        else:
+            break
+    
+    if not g_content:
+        return None, -1
+    
+    return ''.join(g_content), g_start
+
+
+def is_hex(s: str) -> bool:
+    return bool(re.match(r'^[0-9A-Fa-f]+$', s))
+
+
+def is_base64(s: str) -> bool:
+    return bool(re.match(r'^[A-Za-z0-9+/=]+$', s))
 
 
 def verify_igc(filepath: str) -> dict:
     with open(filepath, 'rb') as f:
         raw = f.read()
 
-    # Find the G record (last line starting with 'G')
-    g_idx = -1
-    for i in range(len(raw) - 1, -1, -1):
-        if raw[i] == ord('\n') or raw[i] == ord('\r'):
-            continue
-        line_start = raw.rfind(b'\n', 0, i) + 1
-        line = raw[line_start:i+1]
-        if line.startswith(b'G'):
-            g_idx = line_start
-            break
-
-    if g_idx < 0:
+    g_text, g_start = parse_g_records(raw)
+    if g_text is None:
         return {'status': 'ERROR', 'error': 'No G record found'}
 
-    g_line = raw[g_idx:].splitlines()[0]
-    g_value = g_line[1:].decode('ascii')
+    hmac_input = raw[:g_start]
+    digest = hmac.digest(KEY, hmac_input, hashlib.sha256)
 
-    hmac_input = raw[:g_idx]
-    expected = base64_encode_20(hmac.digest(KEY, hmac_input, hashlib.sha256))
-
-    valid = (expected == g_value)
+    if is_hex(g_text):
+        expected = digest.hex().upper()
+        valid = (expected == g_text)
+        fmt = 'hex'
+    elif is_base64(g_text):
+        import base64
+        expected = base64.b64encode(digest[:20]).decode('ascii')
+        valid = (expected == g_text)
+        fmt = 'base64 (legacy)'
+    else:
+        return {'status': 'ERROR', 'error': f'Unrecognized G record format: {g_text[:20]}...'}
 
     return {
         'status': 'OK' if valid else 'FAIL',
         'file': os.path.basename(filepath),
-        'g_record': 'G' + g_value,
-        'expected': 'G' + expected,
+        'g_record': g_text,
+        'expected': expected,
         'match': valid,
         'data_bytes': len(hmac_input),
+        'format': fmt,
     }
 
 
 def main():
     parser = argparse.ArgumentParser(description='Verify IGC G record HMAC-SHA256 signature.')
     parser.add_argument('files', nargs='+', help='IGC file(s) to verify')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Show record details')
     args = parser.parse_args()
 
     results = []
@@ -91,11 +112,15 @@ def main():
         if r['status'] == 'ERROR':
             print(f"  {r['file']}: ERROR - {r['error']}")
         else:
-            mark = '✓' if r['match'] else '✗'
-            print(f"  {mark} {r['file']}: G record {'VALID' if r['match'] else 'INVALID'}")
+            mark = '\u2713' if r['match'] else '\u2717'
+            print(f"  {mark} {r['file']}: G record {'VALID' if r['match'] else 'INVALID'} [{r['format']}]")
+            if args.verbose:
+                print(f"     file:     G{r['g_record']}")
+                print(f"     expected: G{r['expected']}")
+                print(f"     data:     {r['data_bytes']} bytes")
             if not r['match']:
-                print(f"     file:     {r['g_record']}")
-                print(f"     expected: {r['expected']}")
+                print(f"     file:     G{r['g_record']}")
+                print(f"     expected: G{r['expected']}")
 
     all_ok = all(r.get('match', False) for r in results if r['status'] != 'ERROR')
     return 0 if all_ok else 1

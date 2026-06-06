@@ -738,36 +738,28 @@ void createSDCardTrackFile(void) {
 
 
 #if defined(HAVE_SDCARD) && defined(HAVE_GPS) && defined(HAVE_IGC_SECURITY)
-static const char b64chars[65] PROGMEM = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-static void base64Encode20(const uint8_t* src, char* dst) {
-  for (uint8_t i = 0; i < 6; i++) {
-    uint32_t g = ((uint32_t)src[0] << 16) | ((uint32_t)src[1] << 8) | src[2];
-    dst[0] = pgm_read_byte(&b64chars[(g >> 18) & 0x3F]);
-    dst[1] = pgm_read_byte(&b64chars[(g >> 12) & 0x3F]);
-    dst[2] = pgm_read_byte(&b64chars[(g >> 6) & 0x3F]);
-    dst[3] = pgm_read_byte(&b64chars[g & 0x3F]);
-    src += 3; dst += 4;
-  }
-  uint32_t g = ((uint32_t)src[0] << 16) | ((uint32_t)src[1] << 8);
-  dst[0] = pgm_read_byte(&b64chars[(g >> 18) & 0x3F]);
-  dst[1] = pgm_read_byte(&b64chars[(g >> 12) & 0x3F]);
-  dst[2] = pgm_read_byte(&b64chars[(g >> 6) & 0x3F]);
-  dst[3] = '=';
+static void writeHexByte(uint8_t b) {
+  uint8_t nib = b >> 4;
+  file.write((uint8_t)((nib < 10) ? ('0' + nib) : ('A' + nib - 10)));
+  nib = b & 0x0F;
+  file.write((uint8_t)((nib < 10) ? ('0' + nib) : ('A' + nib - 10)));
 }
 
 void finalizeIGCFile(void) {
   if (!igcHmacActive) return;
   igcHmac.finalize();
   const uint8_t* d = igcHmac.digest();
-  char line[31];
-  line[0] = 'G';
-  base64Encode20(d, line + 1);
-  line[29] = '\r';
-  line[30] = '\n';
-  for (uint8_t i = 0; i < 31; i++) {
-    file.write((uint8_t)line[i]);
+
+  for (uint8_t line = 0; line < 2; line++) {
+    file.write('G');
+    for (uint8_t i = 0; i < 16; i++) {
+      writeHexByte(d[line * 16 + i]);
+    }
+    file.write('\r');
+    file.write('\n');
   }
+
   file.sync();
   igcHmacActive = false;
 }
