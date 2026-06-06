@@ -6,6 +6,7 @@
 *.elf
 *.bin
 *.lst
+IGCs/
 best-fit-calibration/*.IGC
 best-fit-calibration/*.pyc
 best-fit-calibration/__pycache__
