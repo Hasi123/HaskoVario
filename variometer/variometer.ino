@@ -481,24 +481,18 @@ void loop() {
 #ifdef HAVE_BLUETOOTH
       lastSentence = true;
 #endif  //HAVE_BLUETOOTH
-#ifdef HAVE_SDCARD
-      /* start to write IGC B frames */
-      if (sdcardState == SDCARD_STATE_READY) {
-#ifdef VARIOMETER_SDCARD_SEND_CALIBRATED_ALTITUDE
-        uint8_t b = igc.begin(kalmanvert.getCalibratedPosition());
-#else
-        uint8_t b = igc.begin(kalmanvert.getPosition());
-#endif
-#ifdef HAVE_IGC_SECURITY
-        if (igcHmacActive) igcHmac.write(b);
-#endif
-        file.write(b);
-      }
-#endif  //HAVE_SDCARD
     }
 
     /* parse if needed */
     if (nmeaParser.isParsing()) {
+#ifdef HAVE_SDCARD
+      /* buffer B record data, write to SD only if GPS fix is valid */
+      uint8_t bRecBuf[48];
+      uint8_t bRecLen = 0;
+      if (sdcardState == SDCARD_STATE_READY && nmeaParser.isParsingGGA()) {
+        bRecBuf[bRecLen++] = igc.begin(kalmanvert.getPosition());
+      }
+#endif
       while (nmeaParser.isParsing()) {
         uint8_t c = serialNmea.read();
 
@@ -506,20 +500,32 @@ void loop() {
         nmeaParser.feed(c);
 
 #ifdef HAVE_SDCARD
-        /* if GGA, convert to IGC and write to sdcard */
+        /* if GGA, buffer IGC output */
         if (sdcardState == SDCARD_STATE_READY && nmeaParser.isParsingGGA()) {
           igc.feed(c);
           while (igc.available()) {
             uint8_t bc = igc.get();
-#ifdef HAVE_IGC_SECURITY
-            if (igcHmacActive) igcHmac.write(bc);
-#endif
-            file.write(bc);
+            if (bRecLen < sizeof(bRecBuf)) {
+              bRecBuf[bRecLen++] = bc;
+            }
           }
         }
 #endif  //HAVE_SDCARD
       }
       serialNmea.release();
+
+#ifdef HAVE_SDCARD
+      /* flush B record to SD only if GPS has valid position */
+      if (sdcardState == SDCARD_STATE_READY && nmeaParser.satelliteCount > 0) {
+        for (uint8_t i = 0; i < bRecLen; i++) {
+          uint8_t bc = bRecBuf[i];
+#ifdef HAVE_IGC_SECURITY
+          if (igcHmacActive) igcHmac.write(bc);
+#endif
+          file.write(bc);
+        }
+      }
+#endif
 
 #ifdef HAVE_BLUETOOTH
       /* if this is the last GPS sentence */

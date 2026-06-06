@@ -1,37 +1,32 @@
 # HaskoVario / GNUVario — Code Architecture
 
-HaskoVario is an Arduino-based **variometer** for paragliding and hang-gliding. It measures barometric altitude and vertical acceleration, fuses them with a Kalman filter, and provides real-time audio (via a buzzer), visual display (Nokia 5110 LCD), GPS-based flight logging (SD card / IGC format), and Bluetooth telemetry (LXNAV or LK8000 sentence formats).
+HaskoVario is an Arduino-based **variometer** for paragliding and hang-gliding. It measures barometric altitude and vertical acceleration, fuses them with a Kalman filter, and provides real-time audio (via a buzzer), GPS-based IGC flight logging (SD card), and Bluetooth telemetry (LXNAV or LK8000 sentence formats).
 
 ## Project Structure
 
 ```
 HaskoVario/
 ├── variometer/                   # Main firmware sketch (variometer.ino)
-├── SetVarioParameters/           # Companion sketch: writes pilot/glider info to EEPROM
-├── varioTest/                    # Test sketch for variometer
-├── sensorTest/                   # Test sketch for sensors
-├── gps_time_analysis/            # GPS time analysis tool
 ├── libraries/                    # All custom libraries
 │   ├── VarioSettings/            # Central configuration (compile-time settings)
 │   ├── kalmanvert/               # 2-state Kalman filter (position + velocity)
 │   ├── ms5611/                   # MS5611 barometric pressure sensor driver
 │   ├── MPU6050/                  # MPU6050 IMU + DMP firmware loader
 │   ├── beeper/                   # Audio feedback (climb/sink tones)
-│   ├── varioscreen/              # Nokia 5110 LCD display + screen objects
-│   ├── digit/                    # Number-to-digit conversion, stabilization
 │   ├── FlightHistory/            # Circular buffer for climb rate & glide ratio
 │   ├── IntTW/                    # Interrupt-driven I2C (TWI) master library
-│   ├── I2CHelper/                # (in IntTW) Sensor pipeline coordinator
-│   ├── nmea/                     # Legacy NMEA parser
-│   ├── NmeaParser/               # Current GPS NMEA sentence parser ($RMC/$GGA)
-│   ├── SerialNmea/               # Interrupt-driven UART with NEMA filtering
+│   ├── NmeaParser/               # GPS NMEA sentence parser ($RMC/$GGA)
+│   ├── SerialNmea/               # Interrupt-driven UART with NMEA filtering
 │   ├── GpsSentences/             # Output sentence generators (IGC, LK8, LXWP0)
 │   ├── LightFat16/               # Ultra-light FAT16 + SD card driver
 │   ├── varioPower/               # Power management (LDO, button, watchdog, low-bat)
 │   ├── marioSounds/              # Startup/shutdown/low-battery melodies
 │   ├── LPtoneAC/                 # High-quality push-pull tone generation (timer1)
 │   ├── wserial/                  # Lightweight write-only software serial
+│   ├── igcrypto/                 # HMAC-SHA256 IGC G record signing
 │   └── dmp_compress/             # DMP firmware compression utilities
+├── tools/                        # PC-side utilities (igc_verify.py)
+├── IGCs/                         # Sample signed flight logs
 └── schematic.pdf                 # Hardware schematic
 ```
 
@@ -41,13 +36,14 @@ All hardware configuration happens at compile time in `libraries/VarioSettings/V
 
 | Category | Examples |
 |----------|----------|
-| **Feature flags** | `HAVE_SPEAKER`, `HAVE_ACCELEROMETER`, `HAVE_SCREEN`, `HAVE_GPS`, `HAVE_SDCARD`, `HAVE_BLUETOOTH`, `HAVE_VOLTAGE_DIVISOR` |
+| **Feature flags** | `HAVE_SPEAKER`, `HAVE_ACCELEROMETER`, `HAVE_SCREEN`, `HAVE_GPS`, `HAVE_SDCARD`, `HAVE_BLUETOOTH`, `HAVE_VOLTAGE_DIVISOR`, `HAVE_IGC_SECURITY` |
+| **IGC header fields** | `VARIOMETER_MODEL`, `VARIOMETER_PILOT_NAME`, `VARIOMETER_GLIDER_NAME`, `VARIOMETER_GLIDER_ID`, `VARIOMETER_FIRMWARE_VERSION`, `VARIOMETER_HARDWARE_VERSION` |
+| **IGC security** | `VARIOMETER_HMAC_KEY` (32-byte HMAC-SHA256 key) |
 | **Beep thresholds** | `VARIOMETER_SINKING_THRESHOLD` (-0.3 m/s), `VARIOMETER_CLIMBING_THRESHOLD` (+0.8 m/s), `VARIOMETER_NEAR_CLIMBING_SENSITIVITY` |
 | **Flight detection** | `FLIGHT_START_MIN_TIMESTAMP` (30s), velocity thresholds, `FLIGHT_START_MIN_SPEED` (15 km/h GPS) |
 | **GPS/baro calibration** | `VARIOMETER_GPS_ALTI_CALIBRATION_PRECISION_THRESHOLD` (HDOP < 1.5) |
 | **Bluetooth** | Sentence type selector (`VARIOMETER_SENT_LXNAV_SENTENCE` / `VARIOMETER_SENT_LK8000_SENTENCE`), baud rate |
-| **Pin assignments** | CS pins for screen, SD card, interrupt pin for MPU6050 |
-| **Screen timing** | `VARIOMETER_BASE_PAGE_DURATION` (4s), `VARIOMETER_ALTERNATE_PAGE_DURATION` (2s) |
+| **Pin assignments** | CS pins for SD card, interrupt pin for MPU6050 |
 | **Climb/glide integration** | `VARIOMETER_CLIMB_RATE_INTEGRATION_TIME` (6s), `VARIOMETER_GLIDE_RATIO_INTEGRATION_TIME` (30s) |
 
 ## Main Sketch: `variometer/variometer.ino`
@@ -186,16 +182,59 @@ NmeaParser (extracts time, date, altitude, speed, satellite count, HDOP)
 ├── screenTime.setTime(nmeaParser.time)
 ├── ScreenElapsedTime / SATLevel updates
 ├── SpeedFlightHistory::getGlideRatio(speed, timestamp)
-└── IGC file creation (date → filename: GPS00.IGC, GPS01.IGC, ...)
+└── IGC file creation (date → filename: DDMMYY00.IGC, DDMMYY01.IGC, ...)
 ```
 
 ## IGC Flight Logging (SD Card)
 
-When GPS is available and the variometer is calibrated, an IGC file is created on the SD card (FAT16). File naming uses the date + auto-increment: `GPS00.IGC`, `GPS01.IGC`, etc.
+When GPS is available and the variometer is calibrated, an IGC file is
+created on the SD card (FAT16). File naming uses the date + auto-increment:
+`DDMMYY00.IGC`, `DDMMYY01.IGC`, etc.
 
-Each GGA sentence from the GPS is converted to an IGC B-record using `IGCSentence`. The B-record contains: time, latitude, longitude, pressure altitude (from Kalman filter), and GPS altitude. The IGC header (pilot name, glider model, instrument ID) is read from EEPROM.
+### IGC Header (PROGMEM)
 
-The SD card also supports **firmware updates**: holding the power button at startup causes the bootloader to reflash from `FIRM.HEX` on the card.
+The IGC header (pilot name, glider model, instrument ID, etc.) is stored
+as a **single PROGMEM string** assembled at compile time from the defines
+in `VarioSettings.h`. At file creation, the header is written byte-by-byte
+via `pgm_read_byte()`, with a 6-byte placeholder (`000000`) at the date
+position overwritten by the actual GPS date. The header contains 14 HF
+records conforming to IGC spec A3.2.4.
+
+### B Records (Buffered Write)
+
+Each GGA sentence from the GPS is converted to an IGC B-record using
+`IGCSentence`. To prevent corrupted records (e.g. during GPS signal loss),
+the entire B record (max 48 bytes) is buffered on the stack during GGA
+parsing. It is flushed to the SD card and fed to the HMAC engine **only
+after** `NmeaParser::satelliteCount > 0` is confirmed — guaranteeing zero
+incomplete B records on disk.
+
+### IGC Security (HMAC-SHA256 G Record)
+
+When `HAVE_IGC_SECURITY` is enabled, the firmware computes an
+HMAC-SHA256 digest incrementally as bytes are written to the IGC file:
+
+- **Header bytes** — fed to the HMAC engine during file creation
+- **B-record bytes** — fed each time a valid GGA sentence is parsed
+
+On shutdown, a **two-phase sequence** finalizes the file:
+
+1. `varioPower.update()` detects the shutdown trigger (long-press or
+   low voltage) and sets `shutdownPending = true` instead of sleeping.
+2. The main loop calls `finalizeIGCFile()`: HMAC is finalized, and the
+   256-bit digest is written as two `G<32 hex chars>\r\n` lines
+   (64 hex chars total, split per IGC line length limits).
+3. `file.sync()` flushes the block buffer to the SD card.
+4. `varioPower.completeShutdown()` then disables all peripherals and
+   enters `SLEEP_MODE_PWR_DOWN`.
+
+The crypto implementation is in `libraries/igcrypto/` (SHA-256 with
+rolling `W[16]` window, HMAC-SHA256 wrapper, PROGMEM key accessor).
+
+### Firmware Updates
+
+The SD card also supports **firmware updates**: holding the power button
+at startup causes the bootloader to reflash from `FIRM.HEX` on the card.
 
 ## Bluetooth Sentences
 
@@ -213,10 +252,6 @@ The variometer alternates between parsing GPS sentences and sending its own vari
 - **Watchdog** — Reset every loop iteration. If not reset within ~1s, the MCU reboots.
 - **Low-voltage** — Monitors battery (ADC on A1). At < 3.45V: periodic double-beep. At < 3.3V: immediate shutdown.
 - **Firmware update** — Button held for >1s at startup → `varioPower.updateFW()` checks for `FIRM.HEX` on SD card and jumps to bootloader (address 0x7800).
-
-## Config Helper: `SetVarioParameters.ino`
-
-A separate sketch run once to write the pilot name, glider model, and variometer model into EEPROM. These are read by `IGCHeader` when creating IGC flight log headers. On success, plays three confirmation beeps and then enters deep sleep.
 
 ---
 
