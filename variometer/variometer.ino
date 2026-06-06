@@ -718,6 +718,24 @@ void createSDCardTrackFile(void) {
           dateCharP -= 2;
         }
 
+        /* write flight number from filename (dateChar[6..7]) */
+        file.write(',');
+#ifdef HAVE_IGC_SECURITY
+        igcHmac.write(',');
+#endif
+        file.write(dateChar[6]);
+        file.write(dateChar[7]);
+#ifdef HAVE_IGC_SECURITY
+        igcHmac.write(dateChar[6]);
+        igcHmac.write(dateChar[7]);
+#endif
+        file.write('\r');
+        file.write('\n');
+#ifdef HAVE_IGC_SECURITY
+        igcHmac.write('\r');
+        igcHmac.write('\n');
+#endif
+
         while (header.available()) {
           uint8_t b = header.get();
 #ifdef HAVE_IGC_SECURITY

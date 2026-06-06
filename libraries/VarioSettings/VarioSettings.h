@@ -27,18 +27,15 @@
 /*                            */
 /*----------------------------*/
 
-/* Set your personnal info here and launch */
-/* the SetVarioParameters Sketch to store  */
-/* them in EEPROM.                         */
+/* Set your personnal info here.                         */
+/* Compilation is sufficient after changing any of these. */
 
-/* ------ !!! Run SetVarioParameters.ino !!! ---------*/
-/*        !!! Only when you change one   !!!          */
-/*        !!! of these 3 settings.       !!!          */
 #define VARIOMETER_MODEL "HaskoVarioGPS"
 #define VARIOMETER_PILOT_NAME "David Hasko"
 #define VARIOMETER_GLIDER_NAME "OZONE Zeolite 2"
-/*        !!! For the others compilation !!!          */
-/*------- !!! is sufficient.             !!! ---------*/
+#define VARIOMETER_GLIDER_ID "D-HASK"
+#define VARIOMETER_FIRMWARE_VERSION "1.3"
+#define VARIOMETER_HARDWARE_VERSION "0.2"
 
 
 /* time zone relative to UTC */

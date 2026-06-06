@@ -28,11 +28,21 @@
 /**************/
 
 #define IGC_HEADER_PROGMEM_STRING \
-  "AXXX " VARIOMETER_MODEL "\r\nHFDTE010100\r\n" \
-  "HFPLTPILOTINCHARGE: " VARIOMETER_PILOT_NAME "\r\n" \
-  "HFGTYGLIDERTYPE: " VARIOMETER_GLIDER_NAME "\r\n" \
-  "HFDTM100GPSDATUM: WGS-1984\r\n" \
-  "HFFTYFRTYPE: " VARIOMETER_MODEL "\r\n"
+  "AXYYHASKO1\r\n" \
+  "HFDTEDATE:000000" \
+  "HFPLTPILOTINCHARGE:" VARIOMETER_PILOT_NAME "\r\n" \
+  "HFCM2CREW2:\r\n" \
+  "HFGTYGLIDERTYPE:" VARIOMETER_GLIDER_NAME "\r\n" \
+  "HFGIDGLIDERID:" VARIOMETER_GLIDER_ID "\r\n" \
+  "HFDTMGPSDATUM:WGS84\r\n" \
+  "HFALG:GEO\r\n" \
+  "HFALP:ISA\r\n" \
+  "HFRFWFIRMWAREVERSION:" VARIOMETER_FIRMWARE_VERSION "\r\n" \
+  "HFRHWHARDWAREVERSION:" VARIOMETER_HARDWARE_VERSION "\r\n" \
+  "HFFTYFRTYPE:XYY,HaskoVarioGPS\r\n" \
+  "HFGPSRECEIVER:Quectel,L80,22,9999\r\n" \
+  "HFPRSPRESSALTSENSOR:TE,MS5611,9999\r\n" \
+  "HFFRSSECURITYOK\r\n"
 
 const char IGCHeader::headerData[] PROGMEM = IGC_HEADER_PROGMEM_STRING;
 
@@ -42,16 +52,21 @@ int16_t IGCHeader::begin(void) {
   addr = 0;
   size = sizeof(headerData) - 1;  // exclude null terminator
 
-  /* find date position: search for "\r\nHFDTE" and return position right after */
-  for (int16_t i = 0; i < size - 7; i++) {
+  /* find date position: search for "\r\nHFDTEDATE:" and return position right after */
+  for (int16_t i = 0; i < size - 12; i++) {
     if (pgm_read_byte_near(headerData + i) == '\r' &&
         pgm_read_byte_near(headerData + i + 1) == '\n' &&
         pgm_read_byte_near(headerData + i + 2) == 'H' &&
         pgm_read_byte_near(headerData + i + 3) == 'F' &&
         pgm_read_byte_near(headerData + i + 4) == 'D' &&
         pgm_read_byte_near(headerData + i + 5) == 'T' &&
-        pgm_read_byte_near(headerData + i + 6) == 'E') {
-      return i + 7;
+        pgm_read_byte_near(headerData + i + 6) == 'E' &&
+        pgm_read_byte_near(headerData + i + 7) == 'D' &&
+        pgm_read_byte_near(headerData + i + 8) == 'A' &&
+        pgm_read_byte_near(headerData + i + 9) == 'T' &&
+        pgm_read_byte_near(headerData + i + 10) == 'E' &&
+        pgm_read_byte_near(headerData + i + 11) == ':') {
+      return i + 12;
     }
   }
 
