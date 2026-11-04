@@ -16,21 +16,13 @@
 HMACSha256::HMACSha256() {
 }
 
+/* keys longer than 64 bytes are not supported (RFC 2104 would hash */
+/* them first), that needs a ~140 byte Sha256 on the stack. IGC key is 32 */
 void HMACSha256::begin(const uint8_t* key, uint8_t keyLen) {
   uint8_t pad[64];
-  uint8_t hashedKey[32];
 
   if (keyLen > 64) {
-    Sha256 hasher;
-    hasher.begin();
-    hasher.write(key, keyLen);
-    hasher.finalize();
-    const uint8_t* h = hasher.digest();
-    for (uint8_t i = 0; i < 32; i++) {
-      hashedKey[i] = h[i];
-    }
-    key = hashedKey;
-    keyLen = 32;
+    keyLen = 64;
   }
 
   for (uint8_t i = 0; i < 64; i++) {

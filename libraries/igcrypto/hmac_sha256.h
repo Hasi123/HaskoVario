@@ -20,12 +20,15 @@
 class HMACSha256 {
 public:
   HMACSha256();
-  void begin(const uint8_t* key, uint8_t keyLen);
+  void begin(const uint8_t* key, uint8_t keyLen);  //keyLen <= 64
   void write(uint8_t byte);
   void write(const uint8_t* data, uint16_t len);
   void finalize();
   const uint8_t* digest();
   uint16_t getDigestLength() { return 32; }
+
+  /* compute pending SHA-256 rounds, see sha256.h */
+  static bool step(void) { return Sha256::step(); }
 
 private:
   Sha256 inner;

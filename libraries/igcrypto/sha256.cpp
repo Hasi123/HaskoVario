@@ -32,19 +32,65 @@ static const uint32_t K[64] PROGMEM = {
   0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
-#define ROTR(x, n) (((x) >> (n)) | ((x) << (32 - (n))))
+/*********************************************************/
+/* 32 bit rotations/shifts by constants.                 */
+/* AVR has no barrel shifter : gcc compiles x >> 13 as a */
+/* loop of 13 single bit shifts. Here whole bytes are    */
+/* moved and at most 4 single bit rotations remain.      */
+/* The empty asm only stops gcc from folding the steps   */
+/* back into one slow rotation, the C result is the same.*/
+/*********************************************************/
+#define SHA256_AI static inline __attribute__((always_inline))
+#define SHA256_KEEP(x) asm("" : "+r"(x))
+
+SHA256_AI uint32_t rotr1(uint32_t x) { x = (x >> 1) | (x << 31); SHA256_KEEP(x); return x; }
+SHA256_AI uint32_t rotl1(uint32_t x) { x = (x << 1) | (x >> 31); SHA256_KEEP(x); return x; }
+SHA256_AI uint32_t shr1(uint32_t x) { x >>= 1; SHA256_KEEP(x); return x; }
+
+/* n must be a constant */
+SHA256_AI uint32_t rotr(uint32_t x, uint8_t n) {
+  uint8_t bytes = ((n + 4) >> 3) & 0x03;  //nearest whole bytes
+  int8_t bits = (int8_t)n - (int8_t)(((n + 4) >> 3) << 3);  //-4..3 remaining
+  if (bytes) {
+    x = (x >> (bytes * 8)) | (x << (32 - bytes * 8));
+    SHA256_KEEP(x);
+  }
+  for (; bits > 0; bits--) x = rotr1(x);
+  for (; bits < 0; bits++) x = rotl1(x);
+  return x;
+}
+
+SHA256_AI uint32_t shr(uint32_t x, uint8_t n) {
+  if (n >= 8) {
+    x >>= (n & 0x18);
+    SHA256_KEEP(x);
+  }
+  for (uint8_t i = 0; i < (n & 0x07); i++) x = shr1(x);
+  return x;
+}
+
 #define CH(x, y, z) (((x) & (y)) ^ (~(x) & (z)))
 #define MAJ(x, y, z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
-#define SIG0(x) (ROTR((x), 2) ^ ROTR((x), 13) ^ ROTR((x), 22))
-#define SIG1(x) (ROTR((x), 6) ^ ROTR((x), 11) ^ ROTR((x), 25))
-#define SIG2(x) (ROTR((x), 7) ^ ROTR((x), 18) ^ ((x) >> 3))
-#define SIG3(x) (ROTR((x), 17) ^ ROTR((x), 19) ^ ((x) >> 10))
+#define SIG0(x) (rotr((x), 2) ^ rotr((x), 13) ^ rotr((x), 22))
+#define SIG1(x) (rotr((x), 6) ^ rotr((x), 11) ^ rotr((x), 25))
+#define SIG2(x) (rotr((x), 7) ^ rotr((x), 18) ^ shr((x), 3))
+#define SIG3(x) (rotr((x), 17) ^ rotr((x), 19) ^ shr((x), 10))
+
+Sha256* Sha256::pending = NULL;
+uint32_t Sha256::W[16];
+uint32_t Sha256::work[8];
+uint8_t Sha256::round;
 
 Sha256::Sha256() {
   begin();
 }
 
 void Sha256::begin() {
+  /* drop our pending transform if any */
+  if (pending == this) {
+    pending = NULL;
+  }
+
   state[0] = 0x6a09e667;
   state[1] = 0xbb67ae85;
   state[2] = 0x3c6ef372;
@@ -61,7 +107,7 @@ void Sha256::write(uint8_t byte) {
   buffer[bufferIndex++] = byte;
   count += 8;
   if (bufferIndex == 64) {
-    transform(buffer);
+    startTransform();
     bufferIndex = 0;
   }
 }
@@ -81,24 +127,50 @@ void Sha256::finalize() {
   for (uint8_t i = 0; i < 8; i++) {
     write((uint8_t)(bits >> (56 - i * 8)));
   }
+  finishPending();
 }
 
-void Sha256::transform(const uint8_t block[64]) {
-  uint32_t W[16];
+bool Sha256::step(void) {
+  if (pending) {
+    pending->runRounds(IGC_SHA256_ROUNDS_PER_STEP);
+  }
+  return pending != NULL;
+}
+
+void Sha256::finishPending(void) {
+  if (pending) {
+    pending->runRounds(64);
+  }
+}
+
+/* copy the block to W, the buffer can be reused right after */
+void Sha256::startTransform(void) {
+  finishPending();
+
+  for (uint8_t t = 0; t < 16; t++) {
+    W[t] = ((uint32_t)buffer[t * 4]) << 24;
+    W[t] |= ((uint32_t)buffer[t * 4 + 1]) << 16;
+    W[t] |= ((uint32_t)buffer[t * 4 + 2]) << 8;
+    W[t] |= ((uint32_t)buffer[t * 4 + 3]);
+  }
+
+  for (uint8_t i = 0; i < 8; i++) {
+    work[i] = state[i];
+  }
+  round = 0;
+  pending = this;
+}
+
+void Sha256::runRounds(uint8_t rounds) {
   uint32_t a, b, c, d, e, f, g, h;
   uint32_t T1, T2;
 
-  for (uint8_t t = 0; t < 16; t++) {
-    W[t] = ((uint32_t)block[t * 4]) << 24;
-    W[t] |= ((uint32_t)block[t * 4 + 1]) << 16;
-    W[t] |= ((uint32_t)block[t * 4 + 2]) << 8;
-    W[t] |= ((uint32_t)block[t * 4 + 3]);
-  }
+  a = work[0]; b = work[1]; c = work[2]; d = work[3];
+  e = work[4]; f = work[5]; g = work[6]; h = work[7];
 
-  a = state[0]; b = state[1]; c = state[2]; d = state[3];
-  e = state[4]; f = state[5]; g = state[6]; h = state[7];
-
-  for (uint8_t t = 0; t < 64; t++) {
+  uint8_t t = round;
+  uint8_t end = (rounds >= 64 - t) ? 64 : t + rounds;
+  for (; t < end; t++) {
     if (t >= 16) {
       W[t & 0xF] = SIG3(W[(t - 2) & 0xF]) + W[(t - 7) & 0xF]
                  + SIG2(W[(t - 15) & 0xF]) + W[(t - 16) & 0xF];
@@ -114,12 +186,27 @@ void Sha256::transform(const uint8_t block[64]) {
     b = a;
     a = T1 + T2;
   }
+  round = t;
 
-  state[0] += a; state[1] += b; state[2] += c; state[3] += d;
-  state[4] += e; state[5] += f; state[6] += g; state[7] += h;
+  /* transform done */
+  if (t == 64) {
+    state[0] += a; state[1] += b; state[2] += c; state[3] += d;
+    state[4] += e; state[5] += f; state[6] += g; state[7] += h;
+    pending = NULL;
+  }
+
+  /* or save for next step */
+  else {
+    work[0] = a; work[1] = b; work[2] = c; work[3] = d;
+    work[4] = e; work[5] = f; work[6] = g; work[7] = h;
+  }
 }
 
 const uint8_t* Sha256::digest() {
+  if (pending == this) {
+    finishPending();
+  }
+
   for (uint8_t i = 0; i < 8; i++) {
     digestBuffer[i * 4]     = (uint8_t)(state[i] >> 24);
     digestBuffer[i * 4 + 1] = (uint8_t)(state[i] >> 16);

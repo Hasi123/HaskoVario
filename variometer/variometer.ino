@@ -264,6 +264,14 @@ void loop() {
       beeper.setVelocity(kalmanvert.getVelocity());
 #endif  //HAVE_SPEAKER
       I2C::newData = 0;
+      break;
+
+#if defined(HAVE_SDCARD) && defined(HAVE_GPS) && defined(HAVE_IGC_SECURITY)
+    case 0:
+      /* sensor pipeline idle : compute some pending IGC hash rounds */
+      igcHmac.step();
+      break;
+#endif
   }
 
   /* sensor chain stalled (I2C error or lost INT edge) : restart it */

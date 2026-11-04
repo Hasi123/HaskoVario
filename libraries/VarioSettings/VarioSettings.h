@@ -136,6 +136,10 @@
                               0x79, 0x32, 0x35, 0x36, 0x42, 0x69, 0x74, 0x73, \
                               0x53, 0x68, 0x61, 0x72, 0x65, 0x64, 0x21, 0x21 }
 
+/* SHA-256 rounds are spread over idle loop() passes, this many per pass */
+/* (64 rounds per 64 byte block). Signatures don't depend on this value. */
+#define IGC_SHA256_ROUNDS_PER_STEP 4
+
 /* Send GNSS configuration commands at boot via a spare pin */
 /* Comment out to disable. Pin must be wired to GNSS module RX. */
 #define HAVE_GNSS_CONFIG
