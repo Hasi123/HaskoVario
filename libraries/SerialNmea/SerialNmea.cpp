@@ -232,7 +232,11 @@ void SerialNmea::rxCompleteVect(void) {
 	
 	/* send with serial */
 	txHead = nextPos;
+#ifdef HAVE_BLUETOOTH
 	sbi(UCSRB, UDRIE);
+#else
+	txTail = nextPos; //no bluetooth : drop instead of forwarding
+#endif
       }
     }
   }

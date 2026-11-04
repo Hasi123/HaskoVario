@@ -121,7 +121,7 @@
 #define HAVE_ACCELEROMETER
 #define HAVE_GPS
 #define HAVE_SDCARD
-#define HAVE_BLUETOOTH
+//#define HAVE_BLUETOOTH
 //#define HAVE_VOLTAGE_DIVISOR
 
 /* IGC file security (G record with HMAC-SHA256)                    */
