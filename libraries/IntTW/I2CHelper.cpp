@@ -10,6 +10,8 @@
 int8_t volatile I2C::newData = 0;
 uint8_t volatile I2C::msData[3];
 uint8_t volatile I2C::msCurrentType = 0;
+uint8_t volatile I2C::pendingInt = 0;
+uint8_t volatile I2C::fifoPackets = 0;
 uint8_t volatile I2C::fifoData[MPU6050_FIFO_LENGTH];
 
 void I2C::begin(void) {
@@ -98,14 +100,33 @@ static const uint8_t mpuReadFifo[] PROGMEM = { INTTW_ACTION(MPU6050_DEFAULT_ADDR
 					       INTTW_ACTION(MPU6050_DEFAULT_ADDRESS, INTTW_READ),
 					       INTTW_DEST(MPU6050_FIFO_LENGTH, INTTW_AT_POINTER) };
 
+/* reset FIFO while the DMP keeps running, then re-enable FIFO */
+/* two separate transactions: IntTW would merge same-address writes */
+static const uint8_t mpuFifoResetCmd[] PROGMEM = { INTTW_ACTION(MPU6050_DEFAULT_ADDRESS, INTTW_WRITE),
+						   INTTW_DEST(2, INTTW_IN_CMD),
+						   MPU6050_RA_USER_CTRL,
+						   _BV(MPU6050_USERCTRL_DMP_EN_BIT) | _BV(MPU6050_USERCTRL_FIFO_RESET_BIT) };
+
+static const uint8_t mpuFifoEnableCmd[] PROGMEM = { INTTW_ACTION(MPU6050_DEFAULT_ADDRESS, INTTW_WRITE),
+						    INTTW_DEST(2, INTTW_IN_CMD),
+						    MPU6050_RA_USER_CTRL,
+						    _BV(MPU6050_USERCTRL_DMP_EN_BIT) | _BV(MPU6050_USERCTRL_FIFO_EN_BIT) };
+
 /* get sensor data interrupt handler
  1: getSensors() calls intHandler()
- 2: (alternating) ms measure
- 2: on ready trigger get fifo count -> error handling
- 3: on ready trigger get fifo
+ 2: (alternating) ms measure, parsed as soon as it is read
+ 3: get fifo count -> drain to newest packet, or reset FIFO if misaligned
  4: on ready parse and release new data
+ All I2C traffic runs in this chain, never from loop().
 */
 void I2C::intHandler(void){
+  /* previous chain still running: the MPU INT pin is latched, */
+  /* so no new edge will come. Restart when the chain ends.    */
+  if (intTW.transmitting()) {
+    pendingInt = 1;
+    return;
+  }
+  pendingInt = 0;
   intTW.setRxBuffer(msData);
   if (msCurrentType) { //pressure
     intTW.start(msStartPres, sizeof(msStartPres), INTTW_USE_PROGMEM, mpuGetFIFOcount);
@@ -116,31 +137,63 @@ void I2C::intHandler(void){
   }
 }
 
+/* restart a stalled chain from loop(), must not race with INT0 */
+void I2C::kick(void){
+  uint8_t oldSREG = SREG;
+  cli();
+  intHandler();
+  SREG = oldSREG;
+}
+
+void I2C::chainEnd(void){
+  if (pendingInt) intHandler();
+}
+
 void I2C::mpuGetFIFOcount(void){
+  /* ms measure is complete, book it now so an MPU */
+  /* failure can't desync temperature/pressure     */
+  ms5611::parseMeasure(msCurrentType == (MS5611_TEMP_EVERY - 1), msData);
+  msCurrentType--;
+
   intTW.setRxBuffer(fifoData);
   intTW.start(mpuReadFifoCount, sizeof(mpuReadFifoCount), INTTW_USE_PROGMEM | INTTW_KEEP_BUS, mpuCheckFIFOcount);
 }
 
 void I2C::mpuCheckFIFOcount(void){
-  //TODO: check if fifo size as expected
   uint16_t fifo_count = ((uint16_t)fifoData[0] << 8) | (uint16_t)fifoData[1];
-  if (fifo_count != MPU6050_FIFO_LENGTH) { //reset FIFO if not exactly 1 packet
+  if (fifo_count == 0) { //nothing yet
     intTW.stop();
-    newData = -1;
+    chainEnd();
   }
-  else {
+  else if ((fifo_count % MPU6050_FIFO_LENGTH) || fifo_count > MPU6050_FIFO_LENGTH * 8) { //misaligned or overflowing
+    mpuResetFIFO();
+  }
+  else { //read all packets, keep only the newest
+    fifoPackets = fifo_count / MPU6050_FIFO_LENGTH;
     mpuGetFIFO();
   }
 }
 
 void I2C::mpuGetFIFO(void){
   intTW.setRxBuffer(fifoData);
-  intTW.start(mpuReadFifo, sizeof(mpuReadFifo), INTTW_USE_PROGMEM, dataReady);
+  intTW.start(mpuReadFifo, sizeof(mpuReadFifo), INTTW_USE_PROGMEM, mpuFIFOread);
+}
+
+void I2C::mpuFIFOread(void){
+  if (--fifoPackets) mpuGetFIFO();
+  else dataReady();
+}
+
+void I2C::mpuResetFIFO(void){
+  intTW.start(mpuFifoResetCmd, sizeof(mpuFifoResetCmd), INTTW_USE_PROGMEM, mpuEnableFIFO);
+}
+
+void I2C::mpuEnableFIFO(void){
+  intTW.start(mpuFifoEnableCmd, sizeof(mpuFifoEnableCmd), INTTW_USE_PROGMEM, chainEnd);
 }
 
 void I2C::dataReady(void){
-  ms5611::parseMeasure(msCurrentType == (MS5611_TEMP_EVERY - 1), msData);
-  msCurrentType--;
   mpu.parseFIFO(fifoData);
   newData = 1;
+  chainEnd();
 }

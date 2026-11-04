@@ -230,16 +230,13 @@ void enableflightStartComponents(void);
 /*----------------*/
 void loop() {
   static float alt, vertAccel;
+  static unsigned long lastSensorData = millis();
 
   //new sensor data ready
   switch (I2C::newData) {
 
-    case -1:
-      mpu.resetFIFO();
-      I2C::newData++;
-      break;
-
     case 1:
+      lastSensorData = millis();
       ms.update();
       I2C::newData++;
       break;
@@ -266,6 +263,12 @@ void loop() {
       beeper.setVelocity(kalmanvert.getVelocity());
 #endif  //HAVE_SPEAKER
       I2C::newData = 0;
+  }
+
+  /* sensor chain stalled (I2C error or lost INT edge) : restart it */
+  if (millis() - lastSensorData > 100) {
+    lastSensorData = millis();
+    I2C::kick();
   }
 
   /*********************/

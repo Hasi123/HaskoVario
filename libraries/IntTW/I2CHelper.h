@@ -20,16 +20,23 @@ class I2C {
     static bool sendCMD(unsigned char devAddr, unsigned char cmd);
     static uint32_t read24(unsigned char devAddr, unsigned char regAddr);
     static void intHandler(void);
+    static void kick(void);
 	
 	static int8_t volatile newData;
 
   private:
     static uint8_t volatile msData[3];
 	static uint8_t volatile msCurrentType;
+	static uint8_t volatile pendingInt;
+	static uint8_t volatile fifoPackets;
     static uint8_t volatile fifoData[MPU6050_FIFO_LENGTH];
 	static void mpuGetFIFOcount(void);
 	static void mpuCheckFIFOcount(void);
 	static void mpuGetFIFO(void);
+	static void mpuFIFOread(void);
+	static void mpuResetFIFO(void);
+	static void mpuEnableFIFO(void);
+	static void chainEnd(void);
 	static void dataReady(void);
 };
 
