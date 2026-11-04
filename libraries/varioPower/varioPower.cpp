@@ -153,7 +153,7 @@ void VarioPower::update(void) {
       default:
         {
           uint16_t volts = analogRead(A1);
-          if (volts < 740) { //3.45V
+          if (volts < 751) { //3.5V (~214.5 counts per volt)
             if (volts < 708) {
               shutdownPending = true;  //3.3V
             }
