@@ -48,6 +48,7 @@ void kalmanvert::update1(double ma, unsigned long timestamp) {
   /* delta time */
   /**************/
   unsigned long deltaTime = timestamp - t;
+  if (deltaTime > VARIO_UPDATE_PERIOD_MAX_MS) deltaTime = VARIO_UPDATE_PERIOD_MAX_MS;
   double dt = ((double)deltaTime)/1000.0;
   t = timestamp;
 
