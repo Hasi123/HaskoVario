@@ -230,13 +230,14 @@ void enableflightStartComponents(void);
 /*----------------*/
 void loop() {
   static float alt, vertAccel;
-  static unsigned long lastSensorData = millis();
+  static unsigned long lastSensorData;  //0 : first loop kicks once, harmless
+  unsigned long now = millis();
 
   //new sensor data ready
   switch (I2C::newData) {
 
     case 1:
-      lastSensorData = millis();
+      lastSensorData = now;
       ms.update();
       I2C::newData++;
       break;
@@ -252,7 +253,7 @@ void loop() {
       break;
 
     case 4:
-      kalmanvert.update1(vertAccel, millis());
+      kalmanvert.update1(vertAccel, now);
       I2C::newData++;
       break;
 
@@ -266,8 +267,8 @@ void loop() {
   }
 
   /* sensor chain stalled (I2C error or lost INT edge) : restart it */
-  if (millis() - lastSensorData > 100) {
-    lastSensorData = millis();
+  if (now - lastSensorData > 100) {
+    lastSensorData = now;
     I2C::kick();
   }
 
@@ -429,7 +430,7 @@ void loop() {
       else {  //variometerState == VARIOMETER_STATE_CALIBRATED
 
         /* check flight start condition */
-        if ((millis() > FLIGHT_START_MIN_TIMESTAMP) && (kalmanvert.getVelocity() < FLIGHT_START_VARIO_LOW_THRESHOLD || kalmanvert.getVelocity() > FLIGHT_START_VARIO_HIGH_THRESHOLD) && (nmeaParser.getSpeed() > FLIGHT_START_MIN_SPEED)) {
+        if ((now > FLIGHT_START_MIN_TIMESTAMP) && (kalmanvert.getVelocity() < FLIGHT_START_VARIO_LOW_THRESHOLD || kalmanvert.getVelocity() > FLIGHT_START_VARIO_HIGH_THRESHOLD) && (nmeaParser.getSpeed() > FLIGHT_START_MIN_SPEED)) {
           variometerState = VARIOMETER_STATE_FLIGHT_STARTED;
           enableflightStartComponents();
         }
