@@ -23,45 +23,45 @@
 
 #include <Arduino.h>
 
-#define IGC_SENTENCE_ALTI_SIZE 5
-#define IGC_SENTENCE_TIME_SIZE 6
-#define IGC_SENTENCE_LAT_SIZE 7
-#define IGC_SENTENCE_LONG_SIZE 8
-#define IGC_SENTENCE_CARDINAL_SIZE 1
-
 class IGCHeader {
-
  public :
   bool saveParams(const char* model, const char* pilot, const char* glider);
   int16_t begin(void);
   bool available(void);
   uint8_t get(void);
-  
+
  private :
   uint16_t size;
   int addr;
-
   static const char headerData[] PROGMEM;
 };
 
+/****************************************************/
+/* B record : B HHMMSS DDMMmmmN DDDMMmmmE V PPPPP GGGGG */
+/* built from a GGA sentence into the caller buffer */
+/****************************************************/
+#define IGC_B_TIME_POS 1
+#define IGC_B_LAT_POS 7
+#define IGC_B_NS_POS 14
+#define IGC_B_LONG_POS 15
+#define IGC_B_EW_POS 23
+#define IGC_B_VALIDITY_POS 24
+#define IGC_B_PRESS_POS 25
+#define IGC_B_GNSS_POS 30
+#define IGC_B_SIZE 37  //with CRLF
 
-/*!!! the first character of begin() is part of the sentence !!!*/
 class IGCSentence {
-
  public:
-  uint8_t begin(double baroAlti);
-  void feed(uint8_t c);
-  bool available();
-  uint8_t get();
+  void begin(double baroAlti, uint8_t* record);  //record : IGC_B_SIZE bytes
+  void feed(uint8_t c);  //GGA characters after the tag, up to '*'
+  uint8_t end(void);     //record length, 0 if there is no valid position
 
  private:
-  uint8_t outc;
-  uint8_t commaCount;
-  int8_t digitCount;
-  uint8_t digitBuffer[IGC_SENTENCE_ALTI_SIZE];
-  
+  uint8_t* rec;
+  long gnssAlti;
+  uint8_t field;
+  uint8_t digits;
+  uint8_t parts;
 };
-  
-
 
 #endif

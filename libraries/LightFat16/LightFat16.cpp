@@ -106,7 +106,7 @@ int lightfat16::begin(char* fileName, uint8_t fileNameSize) {
   /* load root directory block */
   data = this->blockSet(rootDirectoryBlock, 0);
 
-  for(int fileNumber = 0; fileNumber<LF16_FILE_NAME_NUMBER_LIMIT; fileNumber++) {
+  for(int fileNumber = 1; fileNumber<LF16_FILE_NAME_NUMBER_LIMIT; fileNumber++) { //IGC flight numbers start at 01
   
     /* build file name */
     int digit = fileNumber;

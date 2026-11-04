@@ -30,6 +30,7 @@
 /* Set your personnal info here.                         */
 /* Compilation is sufficient after changing any of these. */
 
+#define VARIOMETER_MANUFACTURER "Hasko"  /* IGC HFFTYFRTYPE : manufacturer name, model */
 #define VARIOMETER_MODEL "HaskoVarioGPS"
 #define VARIOMETER_PILOT_NAME "David Hasko"
 #define VARIOMETER_GLIDER_NAME "OZONE Zeolite 2"

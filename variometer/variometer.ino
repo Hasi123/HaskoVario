@@ -351,11 +351,11 @@ void loop() {
     /* parse if needed */
     if (nmeaParser.isParsing()) {
 #ifdef HAVE_SDCARD
-      /* buffer B record data, write to SD only if GPS fix is valid */
-      uint8_t bRecBuf[48];
-      uint8_t bRecLen = 0;
-      if (sdcardState == SDCARD_STATE_READY && nmeaParser.isParsingGGA()) {
-        bRecBuf[bRecLen++] = igc.begin(kalmanvert.getPosition());
+      /* build the B record from GGA, write it only if the position is valid */
+      uint8_t bRec[IGC_B_SIZE];
+      bool bRecActive = (sdcardState == SDCARD_STATE_READY && nmeaParser.isParsingGGA());
+      if (bRecActive) {
+        igc.begin(kalmanvert.getPosition(), bRec);
       }
 #endif
       while (nmeaParser.isParsing()) {
@@ -365,25 +365,20 @@ void loop() {
         nmeaParser.feed(c);
 
 #ifdef HAVE_SDCARD
-        /* if GGA, buffer IGC output */
-        if (sdcardState == SDCARD_STATE_READY && nmeaParser.isParsingGGA()) {
+        /* if GGA, build IGC B record */
+        if (bRecActive && nmeaParser.isParsingGGA()) {
           igc.feed(c);
-          while (igc.available()) {
-            uint8_t bc = igc.get();
-            if (bRecLen < sizeof(bRecBuf)) {
-              bRecBuf[bRecLen++] = bc;
-            }
-          }
         }
 #endif  //HAVE_SDCARD
       }
       serialNmea.release();
 
 #ifdef HAVE_SDCARD
-      /* flush B record to SD only if GPS has valid position */
-      if (sdcardState == SDCARD_STATE_READY && nmeaParser.satelliteCount > 0) {
+      /* flush B record to SD, empty if no valid position */
+      if (bRecActive) {
+        uint8_t bRecLen = igc.end();
         for (uint8_t i = 0; i < bRecLen; i++) {
-          writeFeed(bRecBuf[i]);
+          writeFeed(bRec[i]);
         }
       }
 #endif
